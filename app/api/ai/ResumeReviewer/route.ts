@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-// import { checkUsage, incrementUsage } from "@/middleware/usage";
+import { checkUsage, incrementUsage } from "@/middleware/usage";
 import axios from "axios";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     // Try LangChain for PDFs first if fileType matches or is unknown
     if (!fileType || fileType === "application/pdf") {
       try {
-        resumeText = await fetchAndExtractPdfText(fileUrl);
+        // resumeText = await fetchAndExtractPdfText(fileUrl);
         console.log("langchain  ,,,", resumeText);
       } catch (error) {
         console.log("LangChain PDF extraction failed:", error);

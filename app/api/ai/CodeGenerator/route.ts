@@ -19,11 +19,11 @@ export async function POST(req: Request) {
     }
 
     // --- CHECK USAGE ---
-    // const userId = session.user.id;
-    // const usageCheck = await checkUsage(userId, "code_generator");
-    // if (!usageCheck.allowed) {
-    //   return NextResponse.json({ error: usageCheck.message }, { status: 403 });
-    // }
+    const userId = session.user.id;
+    const usageCheck = await checkUsage(userId, "code_generator");
+    if (!usageCheck.allowed) {
+      return NextResponse.json({ error: usageCheck.message }, { status: 403 });
+    }
 
     // 2. Input Validation
     const body = await req.json();
@@ -109,11 +109,11 @@ export async function POST(req: Request) {
       // Increment usage
       const estimatedTokens =
         (systemPrompt.length + (generatedText?.length || 0)) / 4;
-      // await incrementUsage(
-      //   userId,
-      //   "code_generator",
-      //   Math.ceil(estimatedTokens)
-      // );
+      await incrementUsage(
+        userId,
+        "code_generator",
+        Math.ceil(estimatedTokens)
+      );
 
       return NextResponse.json({ content: parsedContent });
     } catch (e) {

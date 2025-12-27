@@ -19,11 +19,11 @@ export async function POST(req: Request) {
     }
 
     // 2. Usage Check
-    // const userId = session.user.id;
-    // const usageCheck = await checkUsage(userId, "text_summarizer");
-    // if (!usageCheck.allowed) {
-    //   return NextResponse.json({ error: usageCheck.message }, { status: 403 });
-    // }
+    const userId = session.user.id;
+    const usageCheck = await checkUsage(userId, "text_summarizer");
+    if (!usageCheck.allowed) {
+      return NextResponse.json({ error: usageCheck.message }, { status: 403 });
+    }
 
     // 3. Input Validation
     const body = await req.json();
@@ -97,11 +97,11 @@ export async function POST(req: Request) {
 
     // 6. Increment Usage
     // Estimate tokens (rough approximation: 1 token ~= 4 chars)
-    // const inputTokens = Math.ceil(text.length / 4);
-    // const outputTokens = Math.ceil(generatedText.length / 4);
-    // const totalTokens = inputTokens + outputTokens;
+    const inputTokens = Math.ceil(text.length / 4);
+    const outputTokens = Math.ceil(generatedText.length / 4);
+    const totalTokens = inputTokens + outputTokens;
 
-    // await incrementUsage(userId, "text_summarizer", totalTokens);
+    await incrementUsage(userId, "text_summarizer", totalTokens);
 
     return NextResponse.json({
       summary: generatedText.trim(),
