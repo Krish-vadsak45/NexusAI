@@ -1,8 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import { navigate } from "next/dist/client/components/segment-cache-impl/navigation";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 export function Hero() {
   return (
