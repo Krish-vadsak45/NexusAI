@@ -1,40 +1,135 @@
-<<<<<<< HEAD
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NexusAI 🤖✨
 
-## Getting Started
+**NexusAI** is a comprehensive, all-in-one SaaS platform that empowers users with a suite of generative AI tools. Built with the latest web technologies including **Next.js 16**, **React 19**, and **Tailwind CSS 4**, it features a robust subscription system, enterprise-grade security, and seamless AI integration.
 
-First, run the development server:
+![NexusAI Banner](https://via.placeholder.com/1200x400?text=NexusAI+Dashboard+Preview)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🚀 Features
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 🧠 AI Powerhouse
+Access a diverse range of generative tools powered by **LangChain** and **Google Gemini**:
+-   **📝 Article Writer**: Generate SEO-optimized blog posts and articles.
+-   **🎨 Image Generation**: Create stunning visuals from text prompts (via Pollinations AI).
+-   **🖼️ Background Removal**: Instantly remove backgrounds from images.
+-   **🧹 Object Removal**: Clean up images by removing unwanted objects.
+-   **💻 Code Generator**: Generate clean, efficient code snippets in any language.
+-   **📄 Resume Reviewer**: Get AI-powered feedback to improve your CV.
+-   **🔍 Text Summarizer**: Condense long documents into concise summaries.
+-   **🏷️ Title Generator**: Create catchy headlines for your content.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 💳 Monetization & Usage
+-   **Tiered Subscriptions**: Free, Pro, and Premium plans integrated via **Stripe**.
+-   **Usage Tracking**: Real-time tracking of daily/monthly limits per tool.
+-   **Automated Resets**: Cron jobs to reset usage quotas automatically.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 🛡️ Security & Auth
+-   **Better-Auth Integration**: Secure authentication with Google OAuth and Email/Password.
+-   **Two-Factor Authentication (2FA)**: Enhanced security for user accounts.
+-   **Role-Based Access**: Protected routes and API endpoints.
 
-## Learn More
+## 🛠️ Tech Stack
 
-To learn more about Next.js, take a look at the following resources:
+-   **Framework**: [Next.js 16 (App Router)](https://nextjs.org/)
+-   **Language**: [TypeScript](https://www.typescriptlang.org/)
+-   **Styling**: [Tailwind CSS 4](https://tailwindcss.com/) & [Shadcn UI](https://ui.shadcn.com/)
+-   **Database**: [MongoDB](https://www.mongodb.com/) (with Mongoose)
+-   **Authentication**: [Better-Auth](https://www.better-auth.com/)
+-   **Payments**: [Stripe](https://stripe.com/)
+-   **AI Orchestration**: [LangChain](https://js.langchain.com/)
+-   **File Storage**: [UploadThing](https://uploadthing.com/), [ImageKit](https://imagekit.io/), [Cloudinary](https://cloudinary.com/)
+-   **Validation**: [Zod](https://zod.dev/)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## ⚡ Getting Started
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Prerequisites
+-   Node.js (v18+)
+-   MongoDB Database
+-   Stripe Account
+-   Google Cloud Console Project (for OAuth & Gemini)
 
-## Deploy on Vercel
+### Installation
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/Krish-vadsak45/NexusAI.git
+    cd NexusAI
+    ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-=======
-# NexusAI-
->>>>>>> 950840bf11ab22dd384e33171bde33d8a42cd482
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    # or
+    yarn install
+    ```
+
+3.  **Set up Environment Variables:**
+    Create a `.env` file in the root directory and add the following:
+
+    ```env
+    # Database
+    MONGODB_URI=your_mongodb_connection_string
+
+    # Auth (Better-Auth)
+    BETTER_AUTH_SECRET=your_generated_secret
+    BETTER_AUTH_URL=http://localhost:3000
+    
+    # Google OAuth
+    GOOGLE_CLIENT_ID=your_google_client_id
+    GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+    # AI Services
+    GEMINI_API_KEY=your_gemini_api_key
+    POLLINATIONS_API_KEY=your_pollinations_key
+
+    # Stripe
+    STRIPE_SECRET_KEY=your_stripe_secret_key
+    STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
+    STRIPE_PRICE_ID_PRO=price_id_for_pro_plan
+    STRIPE_PRICE_ID_PREMIUM=price_id_for_premium_plan
+
+    # Image Services
+    NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=...
+    UPLOADTHING_TOKEN=...
+    IMAGEKIT_PRIVATE_KEY=...
+    ```
+
+4.  **Run the development server:**
+    ```bash
+    npm run dev
+    ```
+
+5.  Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## 📂 Project Structure
+
+    ├── app/ # Next.js App Router pages & API routes
+    │ ├── api/ # Backend API endpoints (AI, Auth, Stripe)
+    │ ├── dashboard/ # User dashboard & tool interfaces
+    │ └── (auth)/ # Authentication pages
+    ├── components/ # Reusable UI components
+    │ ├── ui/ # Shadcn UI primitives
+    │ └── ... # Feature-specific components
+    ├── lib/ # Utility functions & configurations
+    │ ├── db.ts # Database connection
+    │ ├── plans.ts # Subscription plan definitions
+    │ └── stripe.ts # Stripe initialization
+    ├── models/ # Mongoose database schemas
+    ├── public/ # Static assets
+    └── middleware/ # Auth & Usage protection middleware
+
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1.  Fork the project
+2.  Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3.  Commit your changes (`git commit -m 'Add## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1.  Fork the project
+2.  Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3.  Commit your changes (`git commit -m 'Add ome AmazingFeature`) 
+4.  Push to the branch (`git push origin feature/AmazingFeature`)
+
