@@ -27,6 +27,11 @@ export async function POST(req: Request) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object;
+
+        if (!session.subscription) {
+          break;
+        }
+
         const subscription = await stripe.subscriptions.retrieve(
           session.subscription as string
         );
@@ -35,6 +40,7 @@ export async function POST(req: Request) {
         const planId = session.metadata?.planId;
 
         if (userId && planId) {
+          const currentPeriodEnd = (subscription as any).current_period_end;
           await SubscriptionModel.findOneAndUpdate(
             { user: userId },
             {
@@ -42,9 +48,10 @@ export async function POST(req: Request) {
               stripeSubscriptionId: session.subscription,
               planId: planId,
               status: "active",
-              currentPeriodEnd: new Date(
-                (subscription as any).current_period_end * 1000
-              ),
+              currentPeriodEnd:
+                typeof currentPeriodEnd === "number"
+                  ? new Date(currentPeriodEnd * 1000)
+                  : new Date(),
             },
             { upsert: true, new: true }
           );
@@ -54,35 +61,47 @@ export async function POST(req: Request) {
 
       case "invoice.payment_succeeded": {
         const invoice = event.data.object;
+        const subscriptionId = (invoice as any).subscription as string;
+
+        if (!subscriptionId) {
+          break;
+        }
+
         const subscription = await stripe.subscriptions.retrieve(
-          (invoice as any).subscription as string
+          subscriptionId
         );
+
+        const currentPeriodEnd = (subscription as any).current_period_end;
 
         await SubscriptionModel.findOneAndUpdate(
           { stripeSubscriptionId: subscription.id },
           {
             status: "active",
-            currentPeriodEnd: new Date(
-              (subscription as any).current_period_end * 1000
-            ),
+            currentPeriodEnd:
+              typeof currentPeriodEnd === "number"
+                ? new Date(currentPeriodEnd * 1000)
+                : new Date(),
           }
         );
         break;
       }
 
       case "customer.subscription.updated": {
-        const subscription = event.data.object;
+        const subscription = event.data.object as Stripe.Subscription;
         const priceId = subscription.items.data[0].price.id;
         const planId = getPlanIdFromPriceId(priceId);
+
+        const currentPeriodEnd = (subscription as any)?.current_period_end;
 
         await SubscriptionModel.findOneAndUpdate(
           { stripeSubscriptionId: subscription.id },
           {
             planId: planId,
             status: subscription.status,
-            currentPeriodEnd: new Date(
-              (subscription as any).current_period_end * 1000
-            ),
+            currentPeriodEnd:
+              typeof currentPeriodEnd === "number"
+                ? new Date(currentPeriodEnd * 1000)
+                : new Date(),
           }
         );
         break;

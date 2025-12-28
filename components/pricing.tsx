@@ -13,6 +13,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
+import axios from "axios";
 
 export function Pricing() {
   const router = useRouter();
@@ -33,13 +34,7 @@ export function Pricing() {
     setIsLoading(planId);
 
     try {
-      const response = await fetch("/api/stripe/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId }),
-      });
-
-      const data = await response.json();
+      const { data } = await axios.post("/api/stripe/checkout", { planId });
 
       if (data.url) {
         window.location.href = data.url;
@@ -47,6 +42,7 @@ export function Pricing() {
         toast.error(data.error);
       }
     } catch (error) {
+      console.error(error);
       toast.error("Something went wrong. Please try again.");
     } finally {
       setIsLoading(null);

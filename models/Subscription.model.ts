@@ -1,7 +1,15 @@
-// models/Subscription.ts
-import mongoose from "mongoose";
+import mongoose, { model, models, Schema } from "mongoose";
 
-const SubscriptionSchema = new mongoose.Schema({
+export interface ISubscription {
+  user: mongoose.Types.ObjectId;
+  planId: string;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  status: "active" | "past_due" | "cancelled";
+  currentPeriodEnd?: Date;
+}
+
+const SubscriptionSchema = new Schema<ISubscription>({
   user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 
   planId: { type: String, default: "free" },
@@ -18,5 +26,5 @@ const SubscriptionSchema = new mongoose.Schema({
   currentPeriodEnd: Date,
 });
 
-export default mongoose.models.Subscription ||
-  mongoose.model("Subscription", SubscriptionSchema);
+export default models.Subscription ||
+  model<ISubscription>("Subscription", SubscriptionSchema);
