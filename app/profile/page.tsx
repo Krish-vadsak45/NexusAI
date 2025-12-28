@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { TwoFactorToggle } from "@/components/TwoFactorToggle";
 import axios from "axios";
+import { ManageSubscriptionButton } from "@/components/ManageSubscriptionButton";
 
 export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
@@ -74,6 +75,14 @@ export default function ProfilePage() {
         <CardContent className="pt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
+              <Label className="text-blue-300 mb-2 ml-1">User ID</Label>
+              <Input
+                value={user.id || "-"}
+                readOnly
+                className="bg-black/80 text-white border-blue-900"
+              />
+            </div>
+            <div>
               <Label className="text-blue-300 mb-2 ml-1">Username</Label>
               <Input
                 value={user.username || user.name || "-"}
@@ -117,11 +126,58 @@ export default function ProfilePage() {
                 className="bg-black/80 text-white border-blue-900"
               />
             </div>
+
+            {/* Subscription Details */}
+            <div className="col-span-1 md:col-span-2 border-t border-blue-900/50 pt-4 mt-2">
+              <h3 className="text-lg font-semibold text-blue-400 mb-4">
+                Subscription Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label className="text-blue-300 mb-2 ml-1">Plan</Label>
+                  <Input
+                    value={user.subscription?.planId?.toUpperCase() || "FREE"}
+                    readOnly
+                    className="bg-black/80 text-white border-blue-900 font-bold"
+                  />
+                </div>
+                <div>
+                  <Label className="text-blue-300 mb-2 ml-1">Status</Label>
+                  <Input
+                    value={user.subscription?.status?.toUpperCase() || "ACTIVE"}
+                    readOnly
+                    className={`bg-black/80 border-blue-900 font-bold ${
+                      user.subscription?.status === "active"
+                        ? "text-green-400"
+                        : "text-white"
+                    }`}
+                  />
+                </div>
+                {user.subscription?.currentPeriodEnd && (
+                  <div className="col-span-1 md:col-span-2">
+                    <Label className="text-blue-300 mb-2 ml-1">Renews On</Label>
+                    <Input
+                      value={new Date(
+                        user.subscription.currentPeriodEnd
+                      ).toLocaleDateString()}
+                      readOnly
+                      className="bg-black/80 text-white border-blue-900"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="mt-4">
+                <ManageSubscriptionButton />
+              </div>
+            </div>
           </div>
-          <TwoFactorToggle
-            enabled={user.twoFactorEnabled}
-            onChange={(val) => setUser({ ...user, twoFactorEnabled: val })}
-          />
+
+          <div className="mt-6 border-t border-blue-900/50 pt-4">
+            <TwoFactorToggle
+              enabled={user.twoFactorEnabled}
+              onChange={(val) => setUser({ ...user, twoFactorEnabled: val })}
+            />
+          </div>
         </CardContent>
       </Card>
     </div>
