@@ -9,7 +9,7 @@ if (!connection) throw new Error("Failed to connect to database");
 
 export const auth = betterAuth({
   // if your connectToDatabase returns an object with a `db` property use that, otherwise pass the connection itself
-  appName: "VideoWatch",
+  appName: "NexusAI",
   database: mongodbAdapter((connection as any).db ?? connection),
   user: {
     additionalFields: {
@@ -156,7 +156,7 @@ export const auth = betterAuth({
     }),
     twoFactor({
       skipVerificationOnEnable: true,
-      issuer: "VideoWatch",
+      issuer: "NexusAI",
       otpOptions: {
         async sendOTP({ user, otp }, request) {
           // send otp to user

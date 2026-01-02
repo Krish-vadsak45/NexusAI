@@ -18,7 +18,7 @@ export default async function Navbar() {
           href="/"
           className="text-2xl font-extrabold tracking-tight text-blue-400"
         >
-          VideoWatch
+          NexusAI
         </Link>
       </div>
       <nav className="hidden items-center gap-6 md:flex">

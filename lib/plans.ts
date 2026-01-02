@@ -13,6 +13,7 @@ export const PLANS = {
       resumeReviewsPerDay: 0,
       textSummariesPerDay: 0,
       codeGenerationsPerDay: 0,
+      videoRepurposePerDay: 0,
       maxWords: 600,
       tokensPerMonth: 10_000,
     },
@@ -26,6 +27,7 @@ export const PLANS = {
       resume_reviewer: false,
       text_summarizer: false,
       code_generator: false,
+      video_repurposer: false,
     },
   },
 
@@ -43,6 +45,7 @@ export const PLANS = {
       resumeReviewsPerDay: 10,
       textSummariesPerDay: 20,
       codeGenerationsPerDay: 20,
+      videoRepurposePerDay: 10,
       maxWords: 3000,
       tokensPerMonth: 200_000,
     },
@@ -56,6 +59,7 @@ export const PLANS = {
       resume_reviewer: true,
       text_summarizer: true,
       code_generator: true,
+      video_repurposer: true,
     },
   },
 
@@ -73,6 +77,7 @@ export const PLANS = {
       resumeReviewsPerDay: 50,
       textSummariesPerDay: 100,
       codeGenerationsPerDay: 100,
+      videoRepurposePerDay: 50,
       maxWords: 6000,
       tokensPerMonth: 1_000_000,
     },
@@ -86,6 +91,7 @@ export const PLANS = {
       resume_reviewer: true,
       text_summarizer: true,
       code_generator: true,
+      video_repurposer: true,
     },
   },
 } as const;

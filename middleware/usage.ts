@@ -16,6 +16,7 @@ export const FEATURE_LIMIT_MAP = {
   resume_reviewer: { limit: "resumeReviewsPerDay", usage: "resumeReviews" },
   text_summarizer: { limit: "textSummariesPerDay", usage: "textSummaries" },
   code_generator: { limit: "codeGenerationsPerDay", usage: "codeGenerations" },
+  video_repurposer: { limit: "videoRepurposePerDay", usage: "videoRepurpose" },
 } as const;
 
 export type FeatureName = keyof typeof FEATURE_LIMIT_MAP;

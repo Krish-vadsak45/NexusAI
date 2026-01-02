@@ -14,6 +14,7 @@ export interface IUsage {
   resumeReviews: number;
   textSummaries: number;
   codeGenerations: number;
+  videoRepurpose: number;
 
   // Monthly counters
   tokensUsed: number;
@@ -42,6 +43,7 @@ const usageSchema = new Schema<IUsage>(
     resumeReviews: { type: Number, default: 0 },
     textSummaries: { type: Number, default: 0 },
     codeGenerations: { type: Number, default: 0 },
+    videoRepurpose: { type: Number, default: 0 },
 
     tokensUsed: { type: Number, default: 0 },
     lastTokenReset: { type: Date, default: Date.now },

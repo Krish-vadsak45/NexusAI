@@ -7,6 +7,7 @@ import { ResumeReviewer } from "@/components/ResumeReviewer";
 import { TextSummarizer } from "@/components/TextSummarizer";
 import { TitleGenerator } from "@/components/TitleGenerator";
 import { notFound } from "next/navigation";
+import { VideoRepurposer } from "@/components/VideoRepurposer";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -26,6 +27,8 @@ export default async function DashboardPage({ params }: PageProps) {
       return <BackgroundRemoval />;
     case "object-removal":
       return <ObjectRemoval />;
+    case "video-repurposer":
+      return <VideoRepurposer />;
     case "resume-reviewer":
       return <ResumeReviewer />;
     case "text-summarizer":

@@ -10,14 +10,16 @@ import {
   Scissors,
   Sparkles,
   Trash2,
+  VideoIcon,
   Zap,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +28,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { PLANS } from "@/lib/plans";
+import axios from "axios";
 
 const tools = [
   {
@@ -82,6 +86,12 @@ const tools = [
     href: "/dashboard/code-generator",
     color: "text-blue-700",
   },
+  {
+    label: "Video repurposer",
+    icon: VideoIcon,
+    href: "/dashboard/video-repurposer",
+    color: "text-cyan-500",
+  },
 ];
 
 export default function DashboardSidebar() {
@@ -89,11 +99,51 @@ export default function DashboardSidebar() {
   const { data: session } = authClient.useSession();
   const [currentPlan, setCurrentPlan] = useState("Free");
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handlePlanSwitch = (plan: string) => {
-    setCurrentPlan(plan);
-    toast.success(`Switched to ${plan} plan`);
-    setIsOpen(false);
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await axios.get("/api/profile");
+        if (res.data?.user?.subscription?.planId) {
+          const planId = res.data.user.subscription.planId;
+          // Capitalize first letter for display
+          const planName = planId.charAt(0).toUpperCase() + planId.slice(1);
+          setCurrentPlan(planName);
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile", error);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const handlePlanSwitch = async (planKey: string) => {
+    const selectedPlan = PLANS[planKey as keyof typeof PLANS];
+    const planName = selectedPlan.name;
+
+    if (planName === currentPlan) {
+      toast.info(`You are already on the ${planName} plan.`);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await axios.post("/api/stripe/checkout", {
+        planId: selectedPlan.id,
+      });
+
+      if (response.data.url) {
+        window.location.href = response.data.url;
+      } else {
+        toast.error("Failed to start checkout process");
+      }
+    } catch (error) {
+      console.error("Checkout error:", error);
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -147,21 +197,46 @@ export default function DashboardSidebar() {
               <DialogTitle>Switch Plan</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              {["Free", "Premium", "Pro"].map((plan) => (
-                <div
-                  key={plan}
-                  className={cn(
-                    "flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:border-primary transition-all",
-                    currentPlan === plan && "border-primary bg-primary/5"
-                  )}
-                  onClick={() => handlePlanSwitch(plan)}
-                >
-                  <span className="font-medium">{plan}</span>
-                  {currentPlan === plan && (
-                    <Check className="h-4 w-4 text-primary" />
-                  )}
-                </div>
-              ))}
+              {Object.keys(PLANS).map((key) => {
+                const plan = PLANS[key as keyof typeof PLANS];
+                const isCurrent = currentPlan.toLowerCase() === plan.id;
+
+                return (
+                  <div
+                    key={plan.id}
+                    className={cn(
+                      "flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-all",
+                      isCurrent
+                        ? "border-primary bg-primary/10 ring-1 ring-primary"
+                        : "hover:border-primary hover:bg-secondary/50"
+                    )}
+                    onClick={() => handlePlanSwitch(key)}
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-medium flex items-center gap-2">
+                        {plan.name}
+                        {isCurrent && (
+                          <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+                            Current
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        ${plan.price}/month
+                      </span>
+                    </div>
+                    {isLoading && !isCurrent ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    ) : isCurrent ? (
+                      <Check className="h-5 w-5 text-primary" />
+                    ) : (
+                      <Button variant="ghost" size="sm" className="h-8">
+                        Switch
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </DialogContent>
         </Dialog>
