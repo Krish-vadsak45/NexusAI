@@ -42,7 +42,7 @@ export default function AuthButtons() {
         <li>
           <Link
             href="/dashboard"
-            className="hover:text-blue-400 transition-colors"
+            className="hover:text-foreground transition-colors"
           >
             Dashboards
           </Link>
@@ -50,7 +50,7 @@ export default function AuthButtons() {
         <li>
           <Link
             href="/profile"
-            className="hover:text-blue-400 transition-colors"
+            className="hover:text-foreground transition-colors"
           >
             Profile
           </Link>

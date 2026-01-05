@@ -112,6 +112,17 @@ export function ResumeReviewer() {
       });
 
       setAnalysis(response.data);
+
+      await axios.post("/api/history", {
+        tool: "Resume Reviewer",
+        title: `Resume Analysis: ${selectedFile.name}`,
+        input: {
+          fileName: selectedFile.name,
+          jobDescription: jobDescription.substring(0, 100) + "...",
+        },
+        output: response.data,
+      });
+
       toast.success("Resume analyzed successfully!");
     } catch (error: any) {
       console.error("Resume analysis error:", error);

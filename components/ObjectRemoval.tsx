@@ -95,6 +95,27 @@ export function ObjectRemoval() {
         setPublicId(response.data.publicId);
       }
 
+      await axios.post("/api/history", {
+        tool: "Object Removal",
+        title:
+          mode === "remove"
+            ? `Remove: ${objectDescription}`
+            : `Replace: ${objectDescription} with ${replaceWith}`,
+        input: {
+          mode,
+          objectDescription,
+          replaceWith,
+          originalImage: selectedFile.name,
+        },
+        output: {
+          publicId: response.data.publicId,
+          mode,
+          objectDescription,
+          replaceWith,
+          url: response.data.url,
+        },
+      });
+
       toast.success(
         mode === "remove"
           ? "Object removed successfully!"

@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CldUploadWidget } from "next-cloudinary";
+import axios from "axios";
 
 export function VideoRepurposer() {
   const [loading, setLoading] = useState(false);
@@ -38,18 +39,27 @@ export function VideoRepurposer() {
     };
 
     try {
-      const res = await fetch("/api/ai/VideoRepurposer", {
-        method: "POST",
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" },
+      const res = await axios.post("/api/ai/VideoRepurposer", data);
+
+      setResult(res.data.content);
+
+      await axios.post("/api/history", {
+        tool: "Video Repurposer",
+        title: data.title as string,
+        input: {
+          title: data.title,
+          context: data.context,
+          tone: data.tone,
+          videoUrl: data.videoUrl,
+        },
+        output: res.data.content,
       });
 
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
-      setResult(json.content);
       toast.success("Content generated successfully!");
     } catch (error: any) {
-      toast.error(error.message || "Something went wrong");
+      toast.error(
+        error.response?.data?.error || error.message || "Something went wrong"
+      );
     } finally {
       setLoading(false);
     }

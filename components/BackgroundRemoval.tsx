@@ -91,6 +91,24 @@ export function BackgroundRemoval() {
       if (response.data.publicId) {
         setPublicId(response.data.publicId);
       }
+
+      await axios.post("/api/history", {
+        tool: "Background Removal",
+        title:
+          mode === "remove" ? "Remove Background" : `Replace BG: ${bgPrompt}`,
+        input: {
+          mode,
+          prompt: bgPrompt,
+          originalImage: selectedFile.name,
+        },
+        output: {
+          publicId: response.data.publicId,
+          mode,
+          prompt: bgPrompt,
+          url: response.data.url,
+        },
+      });
+
       toast.success(
         mode === "remove"
           ? "Background removed successfully!"

@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -31,40 +34,68 @@ interface TitleData {
   reasoning: string;
 }
 
+const formSchema = z.object({
+  topic: z.string().min(1, "Topic is required"),
+  category: z.enum(
+    [
+      "General",
+      "Technology",
+      "Business",
+      "Health",
+      "Lifestyle",
+      "Education",
+      "Travel",
+      "Food",
+    ],
+    {
+      required_error: "Category is required",
+    }
+  ),
+  tone: z.enum(["catchy", "professional", "seo", "question", "dramatic"], {
+    required_error: "Tone is required",
+  }),
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
 export function TitleGenerator() {
   const [isLoading, setIsLoading] = useState(false);
   const [generatedTitles, setGeneratedTitles] = useState<TitleData[]>([]);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
-    topic: "",
-    tone: "catchy",
-    category: "General",
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      topic: "",
+      category: "General",
+      tone: "catchy",
+    },
   });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleGenerate = async () => {
-    if (!formData.topic) {
-      toast.error("Please enter a topic");
-      return;
-    }
-
+  const onSubmit = async (values: FormValues) => {
     setIsLoading(true);
     setGeneratedTitles([]);
 
     try {
-      const response = await axios.post("/api/ai/TitleGenerator", formData);
+      const response = await axios.post("/api/ai/TitleGenerator", values);
 
       if (response.data.titles && Array.isArray(response.data.titles)) {
         setGeneratedTitles(response.data.titles);
-        toast.success("Titles generated successfully!");
+
+        // Save to history
+        await axios.post("/api/history", {
+          tool: "Title Generator",
+          title: values.topic,
+          input: values,
+          output: response.data.titles,
+        });
+
+        toast.success("Titles generated and saved!");
       } else {
         throw new Error("Invalid response format");
       }
@@ -100,62 +131,92 @@ export function TitleGenerator() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="topic">Topic / Keyword</Label>
-              <Input
-                id="topic"
-                name="topic"
-                placeholder="e.g., Digital Marketing"
-                value={formData.topic}
-                onChange={handleInputChange}
-              />
-            </div>
+            <form
+              id="title-form"
+              onSubmit={handleSubmit(onSubmit)}
+              className="space-y-4"
+            >
+              <div className="space-y-2">
+                <Label htmlFor="topic">Topic / Keyword</Label>
+                <Input
+                  id="topic"
+                  placeholder="e.g., Digital Marketing"
+                  {...register("topic")}
+                />
+                {errors.topic && (
+                  <p className="text-sm text-red-500">{errors.topic.message}</p>
+                )}
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Select
-                value={formData.category}
-                onValueChange={(value) => handleSelectChange("category", value)}
-              >
-                <SelectTrigger id="category">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="General">General</SelectItem>
-                  <SelectItem value="Technology">Technology</SelectItem>
-                  <SelectItem value="Business">Business</SelectItem>
-                  <SelectItem value="Health">Health</SelectItem>
-                  <SelectItem value="Lifestyle">Lifestyle</SelectItem>
-                  <SelectItem value="Education">Education</SelectItem>
-                  <SelectItem value="Travel">Travel</SelectItem>
-                  <SelectItem value="Food">Food</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <Controller
+                  name="category"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <SelectTrigger id="category">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="General">General</SelectItem>
+                        <SelectItem value="Technology">Technology</SelectItem>
+                        <SelectItem value="Business">Business</SelectItem>
+                        <SelectItem value="Health">Health</SelectItem>
+                        <SelectItem value="Lifestyle">Lifestyle</SelectItem>
+                        <SelectItem value="Education">Education</SelectItem>
+                        <SelectItem value="Travel">Travel</SelectItem>
+                        <SelectItem value="Food">Food</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.category && (
+                  <p className="text-sm text-red-500">
+                    {errors.category.message}
+                  </p>
+                )}
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="tone">Tone</Label>
-              <Select
-                value={formData.tone}
-                onValueChange={(value) => handleSelectChange("tone", value)}
-              >
-                <SelectTrigger id="tone">
-                  <SelectValue placeholder="Select tone" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="catchy">Catchy & Viral</SelectItem>
-                  <SelectItem value="professional">Professional</SelectItem>
-                  <SelectItem value="seo">SEO Optimized</SelectItem>
-                  <SelectItem value="question">Question Based</SelectItem>
-                  <SelectItem value="dramatic">Dramatic</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="tone">Tone</Label>
+                <Controller
+                  name="tone"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <SelectTrigger id="tone">
+                        <SelectValue placeholder="Select tone" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="catchy">Catchy & Viral</SelectItem>
+                        <SelectItem value="professional">
+                          Professional
+                        </SelectItem>
+                        <SelectItem value="seo">SEO Optimized</SelectItem>
+                        <SelectItem value="question">Question Based</SelectItem>
+                        <SelectItem value="dramatic">Dramatic</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.tone && (
+                  <p className="text-sm text-red-500">{errors.tone.message}</p>
+                )}
+              </div>
+            </form>
           </CardContent>
           <CardFooter>
             <Button
               className="w-full"
-              onClick={handleGenerate}
+              type="submit"
+              form="title-form"
               disabled={isLoading}
             >
               {isLoading ? (

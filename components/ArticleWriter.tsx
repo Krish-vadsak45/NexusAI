@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -48,6 +51,22 @@ interface GeneratedData {
   summary: string | string[];
 }
 
+const formSchema = z.object({
+  topic: z.string().min(1, "Topic is required"),
+  keywords: z.string().optional(),
+  tone: z.enum(["professional", "casual", "enthusiastic", "witty"], {
+    required_error: "Tone is required",
+  }),
+  length: z.enum(["short", "medium", "long"], {
+    required_error: "Length is required",
+  }),
+  language: z.enum(["english", "spanish", "french", "german"], {
+    required_error: "Language is required",
+  }),
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
 export function ArticleWriter() {
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<GeneratedData | null>(null);
@@ -55,40 +74,39 @@ export function ArticleWriter() {
     "article" | "seo" | "social" | "summary"
   >("article");
 
-  const [formData, setFormData] = useState({
-    topic: "",
-    keywords: "",
-    tone: "professional",
-    length: "medium",
-    language: "english",
+  const {
+    register,
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      topic: "",
+      keywords: "",
+      tone: "professional",
+      length: "medium",
+      language: "english",
+    },
   });
 
-  const handleInputChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleGenerate = async () => {
-    if (!formData.topic) {
-      toast.error("Please enter a topic");
-      return;
-    }
-
+  const onSubmit = async (values: FormValues) => {
     setIsLoading(true);
     setData(null);
 
     try {
-      const response = await axios.post("/api/ai/ArticleWriter", formData);
+      const response = await axios.post("/api/ai/ArticleWriter", values);
       setData(response.data.content);
-      toast.success("Content generated successfully!");
+
+      // Save to history
+      await axios.post("/api/history", {
+        tool: "Article Writer",
+        title: values.topic,
+        input: values,
+        output: response.data.content,
+      });
+
+      toast.success("Content generated and saved!");
     } catch (error: any) {
       console.error(error);
       toast.error(
@@ -120,87 +138,135 @@ export function ArticleWriter() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="topic">Topic / Title</Label>
-              <Input
-                id="topic"
-                name="topic"
-                placeholder="e.g., The Future of AI"
-                value={formData.topic}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="keywords">Keywords</Label>
-              <Input
-                id="keywords"
-                name="keywords"
-                placeholder="e.g., AI, Tech, Future"
-                value={formData.keywords}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+            <form
+              id="article-form"
+              onSubmit={handleSubmit(onSubmit)}
+              className="space-y-4"
+            >
               <div className="space-y-2">
-                <Label htmlFor="tone">Tone</Label>
-                <Select
-                  value={formData.tone}
-                  onValueChange={(value) => handleSelectChange("tone", value)}
-                >
-                  <SelectTrigger id="tone">
-                    <SelectValue placeholder="Select tone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="professional">Professional</SelectItem>
-                    <SelectItem value="casual">Casual</SelectItem>
-                    <SelectItem value="enthusiastic">Enthusiastic</SelectItem>
-                    <SelectItem value="witty">Witty</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="topic">Topic / Title</Label>
+                <Input
+                  id="topic"
+                  placeholder="e.g., The Future of AI"
+                  {...register("topic")}
+                />
+                {errors.topic && (
+                  <p className="text-sm text-red-500">{errors.topic.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="length">Length</Label>
-                <Select
-                  value={formData.length}
-                  onValueChange={(value) => handleSelectChange("length", value)}
-                >
-                  <SelectTrigger id="length">
-                    <SelectValue placeholder="Select length" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="short">Short</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="long">Long</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="keywords">Keywords</Label>
+                <Input
+                  id="keywords"
+                  placeholder="e.g., AI, Tech, Future"
+                  {...register("keywords")}
+                />
+                {errors.keywords && (
+                  <p className="text-sm text-red-500">
+                    {errors.keywords.message}
+                  </p>
+                )}
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="language">Language</Label>
-              <Select
-                value={formData.language}
-                onValueChange={(value) => handleSelectChange("language", value)}
-              >
-                <SelectTrigger id="language">
-                  <SelectValue placeholder="Select language" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="english">English</SelectItem>
-                  <SelectItem value="spanish">Spanish</SelectItem>
-                  <SelectItem value="french">French</SelectItem>
-                  <SelectItem value="german">German</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="tone">Tone</Label>
+                  <Controller
+                    name="tone"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <SelectTrigger id="tone">
+                          <SelectValue placeholder="Select tone" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="professional">
+                            Professional
+                          </SelectItem>
+                          <SelectItem value="casual">Casual</SelectItem>
+                          <SelectItem value="enthusiastic">
+                            Enthusiastic
+                          </SelectItem>
+                          <SelectItem value="witty">Witty</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.tone && (
+                    <p className="text-sm text-red-500">
+                      {errors.tone.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="length">Length</Label>
+                  <Controller
+                    name="length"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <SelectTrigger id="length">
+                          <SelectValue placeholder="Select length" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="short">Short</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="long">Long</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.length && (
+                    <p className="text-sm text-red-500">
+                      {errors.length.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="language">Language</Label>
+                <Controller
+                  name="language"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <SelectTrigger id="language">
+                        <SelectValue placeholder="Select language" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="english">English</SelectItem>
+                        <SelectItem value="spanish">Spanish</SelectItem>
+                        <SelectItem value="french">French</SelectItem>
+                        <SelectItem value="german">German</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.language && (
+                  <p className="text-sm text-red-500">
+                    {errors.language.message}
+                  </p>
+                )}
+              </div>
+            </form>
           </CardContent>
           <CardFooter>
             <Button
               className="w-full bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 transition-all"
-              onClick={handleGenerate}
+              type="submit"
+              form="article-form"
               disabled={isLoading}
             >
               {isLoading ? (

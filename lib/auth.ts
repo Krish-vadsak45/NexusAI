@@ -3,6 +3,7 @@ import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import connectToDatabase from "./db";
 import { emailOTP, magicLink, twoFactor } from "better-auth/plugins";
 import nodemailer from "nodemailer";
+import Subscription from "@/models/Subscription.model";
 
 const connection = await connectToDatabase();
 if (!connection) throw new Error("Failed to connect to database");
@@ -19,6 +20,19 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          await Subscription.create({
+            user: user.id,
+            planId: "free",
+            status: "active",
+          });
+        },
+      },
+    },
   },
   socialProviders: {
     google: {

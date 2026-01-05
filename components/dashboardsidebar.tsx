@@ -109,6 +109,7 @@ export default function DashboardSidebar() {
           const planId = res.data.user.subscription.planId;
           // Capitalize first letter for display
           const planName = planId.charAt(0).toUpperCase() + planId.slice(1);
+          console.log("Fetched plan:", planName, planId);
           setCurrentPlan(planName);
         }
       } catch (error) {
@@ -135,6 +136,9 @@ export default function DashboardSidebar() {
 
       if (response.data.url) {
         window.location.href = response.data.url;
+        toast.success(
+          response.data.message || `Redirecting to ${planName} plan checkout.`
+        );
       } else {
         toast.error("Failed to start checkout process");
       }

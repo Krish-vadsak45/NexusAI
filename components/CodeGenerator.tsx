@@ -62,7 +62,16 @@ export function CodeGenerator() {
 
       setGeneratedCode(response.data.content.code);
       setExplanation(response.data.content.explanation);
-      toast.success("Code generated successfully!");
+
+      // Save to history
+      await axios.post("/api/history", {
+        tool: "Code Generator",
+        title: prompt.substring(0, 50) + "...",
+        input: { prompt, language },
+        output: response.data.content,
+      });
+
+      toast.success("Code generated and saved!");
     } catch (error: any) {
       toast.error(
         error.message || "Failed to generate code. Please try again."

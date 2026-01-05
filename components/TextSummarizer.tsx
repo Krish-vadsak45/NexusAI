@@ -63,7 +63,16 @@ export function TextSummarizer() {
       });
 
       setSummary(response.data.summary);
-      toast.success("Text summarized successfully!");
+
+      // Save to history
+      await axios.post("/api/history", {
+        tool: "Text Summarizer",
+        title: inputText.substring(0, 50) + "...",
+        input: { text: inputText, length, format, focus },
+        output: response.data.summary,
+      });
+
+      toast.success("Text summarized and saved!");
     } catch (error: any) {
       console.error("Summarization error:", error);
       toast.error(

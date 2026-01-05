@@ -23,6 +23,7 @@ import {
 import { Download, ImageIcon, Loader2, Sparkles, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
+import axios from "axios";
 
 export function ImageGeneration() {
   const [isLoading, setIsLoading] = useState(false);
@@ -53,16 +54,14 @@ export function ImageGeneration() {
 
     setIsEnhancing(true);
     try {
-      const response = await fetch("/api/ai/enhance-prompt", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: formData.prompt }),
+      const response = await axios.post("/api/ai/enhance-prompt", {
+        prompt: formData.prompt,
       });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
-
-      setFormData((prev) => ({ ...prev, prompt: data.enhancedPrompt }));
+      setFormData((prev) => ({
+        ...prev,
+        prompt: response.data.enhancedPrompt,
+      }));
       toast.success("Prompt enhanced!");
     } catch (error) {
       toast.error("Failed to enhance prompt");
@@ -81,30 +80,32 @@ export function ImageGeneration() {
     setGeneratedImage(null);
 
     try {
-      const response = await fetch("/api/ai/ImageGeneration", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          prompt: formData.prompt,
-          style: formData.style,
-          size: formData.resolution,
-        }),
+      const response = await axios.post("/api/ai/ImageGeneration", {
+        prompt: formData.prompt,
+        style: formData.style,
+        size: formData.resolution,
       });
 
-      const data = await response.json();
+      setGeneratedImage(response.data.url);
 
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to generate image");
-      }
+      await axios.post("/api/history", {
+        tool: "Image Generation",
+        title: formData.prompt,
+        input: {
+          prompt: formData.prompt,
+          style: formData.style,
+          resolution: formData.resolution,
+        },
+        output: response.data.url,
+      });
 
-      setGeneratedImage(data.url);
       toast.success("Image generated successfully!");
     } catch (error: any) {
       console.error("Generation error:", error);
       toast.error(
-        error.message || "Failed to generate image. Please try again."
+        error.response?.data?.error ||
+          error.message ||
+          "Failed to generate image. Please try again."
       );
     } finally {
       setIsLoading(false);
