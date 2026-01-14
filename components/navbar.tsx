@@ -1,61 +1,50 @@
 // components/navbar.tsx
 import Link from "next/link";
-import { Button } from "./ui/button";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 import AuthButtons from "./navbar-auth-buttons";
+import Image from "next/image";
 
 export default async function Navbar() {
-  // Server-side only: render static links, auth buttons are client-side
-
   return (
-    <nav
-      className="w-full px-6 py-4 flex items-center justify-between bg-black/80 text-white shadow-lg border-b border-gray-800 sticky top-0 z-50"
-      aria-label="Main navigation"
-    >
-      <div className="flex items-center gap-2">
-        <Link
-          href="/"
-          className="text-2xl font-extrabold tracking-tight text-blue-400"
-        >
-          NexusAI
+    <nav className="sticky top-0 z-50 w-full border-b border-white/5 bg-black/60 backdrop-blur-xl transition-all duration-300 supports-[backdrop-filter]:bg-black/60">
+      <div className="absolute bottom-0 left-0 h-[1px] w-full bg-gradient-to-r from-transparent via-blue-500/50 to-transparent" />
+
+      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        {/* Logo Section */}
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="relative h-40 w-40 transition-transform duration-300 group-hover:scale-110">
+            <Image
+              src="/logo.png"
+              alt="NexusAI Logo"
+              fill
+              className="object-contain"
+            />
+          </div>
         </Link>
+
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center gap-1">
+          {["Home", "Features", "Pricing", "About", "Contact"].map((item) => (
+            <Link
+              key={item}
+              href={
+                item === "Home"
+                  ? "/"
+                  : item === "About"
+                  ? "/about"
+                  : `/#${item.toLowerCase()}`
+              }
+              className="relative px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors group rounded-full hover:bg-white/5"
+            >
+              {item}
+            </Link>
+          ))}
+        </div>
+
+        {/* Auth Buttons */}
+        <ul className="flex items-center gap-4">
+          <AuthButtons />
+        </ul>
       </div>
-      <nav className="hidden items-center gap-6 md:flex">
-        <Link
-          href="/"
-          className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Home
-        </Link>
-        <Link
-          href="#features"
-          className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Features
-        </Link>
-        <Link
-          href="#pricing"
-          className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Pricing
-        </Link>
-        <Link
-          href="#about"
-          className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-        >
-          About
-        </Link>
-        <Link
-          href="#contact"
-          className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Contact
-        </Link>
-      </nav>
-      <ul className="flex items-center gap-6 text-sm font-medium">
-        <AuthButtons />
-      </ul>
     </nav>
   );
 }

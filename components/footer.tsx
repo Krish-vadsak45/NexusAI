@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export function Footer() {
   const footerLinks = {
@@ -19,16 +20,18 @@ export function Footer() {
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-2">
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-foreground">
-                <span className="font-mono text-sm font-bold text-background">
-                  S
-                </span>
+              <div className="relative h-40 w-40">
+                <Image
+                  src="/logo.png"
+                  alt="NexusAI Logo"
+                  fill
+                  className="object-contain"
+                />
               </div>
-              <span className="text-lg font-semibold">SaaSify</span>
             </Link>
             <p className="mt-4 max-w-xs text-sm text-muted-foreground leading-relaxed">
-              The complete platform to build, deploy, and scale modern web
-              applications with confidence.
+              Empowering creators and developers with the next generation of
+              artificial intelligence tools.
             </p>
           </div>
 
@@ -39,7 +42,7 @@ export function Footer() {
                 {links.map((link) => (
                   <li key={link}>
                     <Link
-                      href="#"
+                      href={link === "About" ? "/about" : "#"}
                       className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {link}

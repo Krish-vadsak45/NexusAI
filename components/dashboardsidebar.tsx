@@ -30,6 +30,7 @@ import {
 import { toast } from "sonner";
 import { PLANS } from "@/lib/plans";
 import axios from "axios";
+import Image from "next/image";
 
 const tools = [
   {
@@ -37,6 +38,12 @@ const tools = [
     icon: LayoutDashboard,
     href: "/dashboard",
     color: "text-primary",
+  },
+  {
+    label: "Nexus Studio",
+    icon: Zap,
+    href: "/dashboard/studio",
+    color: "text-amber-500",
   },
   {
     label: "Article Writer",
@@ -153,11 +160,15 @@ export default function DashboardSidebar() {
   return (
     <div className="space-y-4 py-4 flex flex-col h-full bg-black border-r border-border">
       <div className="px-3 py-2 flex-1">
-        <Link href="/" className="flex items-center pl-3 mb-14">
-          <div className="relative h-8 w-8 mr-4">
-            <LayoutDashboard className="h-8 w-8 text-primary" />
+        <Link href="/" className="flex items-center pl-3 mb-14 gap-2">
+          <div className="relative h-40 w-40">
+            <Image
+              src="/logo.png"
+              alt="NexusAI Logo"
+              fill
+              className="object-contain"
+            />
           </div>
-          <h1 className="text-2xl font-bold">Dashboard</h1>
         </Link>
         <div className="space-y-1">
           {tools.map((route) => (
