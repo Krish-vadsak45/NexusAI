@@ -5,7 +5,7 @@ import axios from "axios";
 import {
   Sparkles,
   Zap,
-  Loader2,
+  // Loader2 replaced by InlineLoader
   CheckCircle2,
   FileText,
   Image as ImageIcon,
@@ -23,6 +23,7 @@ import {
   Twitter,
 } from "lucide-react";
 import Link from "next/link";
+import { InlineLoader } from "@/components/InlineLoader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -53,10 +54,10 @@ export default function NexusStudioPage() {
 
   const [selectedOptions, setSelectedOptions] = useState({
     title: true,
-    article: true,
-    image: true,
-    social: true,
-    twitter: true,
+    article: false,
+    image: false,
+    social: false,
+    twitter: false,
   });
 
   useEffect(() => {
@@ -81,7 +82,7 @@ export default function NexusStudioPage() {
   if (hasAccess === null) {
     return (
       <div className="min-h-screen bg-black/95 flex items-center justify-center text-white">
-        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+        <InlineLoader className="h-8 w-8" />
       </div>
     );
   }
@@ -392,7 +393,7 @@ export default function NexusStudioPage() {
           >
             {isGenerating ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <InlineLoader className="mr-2 h-4 w-4" />
                 Creating...
               </>
             ) : (
@@ -424,15 +425,15 @@ export default function NexusStudioPage() {
                                   isActive
                                     ? "border-amber-500 bg-amber-500/20 text-amber-500 scale-110"
                                     : isCompleted
-                                    ? "border-green-500 bg-green-500 text-white"
-                                    : "border-white/10 bg-white/5 text-gray-600"
+                                      ? "border-green-500 bg-green-500 text-white"
+                                      : "border-white/10 bg-white/5 text-gray-600"
                                 }
                             `}
                   >
                     {isCompleted ? (
                       <CheckCircle2 className="h-5 w-5" />
                     ) : isActive ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <InlineLoader className="h-5 w-5" />
                     ) : (
                       <step.icon className="h-4 w-4" />
                     )}

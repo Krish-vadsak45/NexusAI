@@ -13,7 +13,7 @@ export default async function Navbar() {
         <Link href="/" className="flex items-center gap-3 group">
           <div className="relative h-40 w-40 transition-transform duration-300 group-hover:scale-110">
             <Image
-              src="/logo.png"
+              src="/logo-1.png"
               alt="NexusAI Logo"
               fill
               className="object-contain"

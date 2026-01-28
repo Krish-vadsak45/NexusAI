@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import {
   FileText,
-  Loader2,
+  // Loader2 removed - using InlineLoader
   Copy,
   Check,
   AlignLeft,
@@ -34,10 +34,13 @@ import {
   Lightbulb,
 } from "lucide-react";
 import { toast } from "sonner";
+import { InlineLoader } from "./InlineLoader";
 import axios from "axios";
+import { ProjectSelector } from "@/components/ProjectSelector";
 
 export function TextSummarizer() {
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [inputText, setInputText] = useState("");
   const [summary, setSummary] = useState("");
   const [length, setLength] = useState("medium");
@@ -46,6 +49,10 @@ export function TextSummarizer() {
   const [copied, setCopied] = useState(false);
 
   const handleSummarize = async () => {
+    if (!selectedProjectId || selectedProjectId === "none") {
+      toast.error("Please select a project to continue");
+      return;
+    }
     if (!inputText.trim()) {
       toast.error("Please enter some text to summarize");
       return;
@@ -70,6 +77,7 @@ export function TextSummarizer() {
         title: inputText.substring(0, 50) + "...",
         input: { text: inputText, length, format, focus },
         output: response.data.summary,
+        projectId: selectedProjectId === "none" ? undefined : selectedProjectId,
       });
 
       toast.success("Text summarized and saved!");
@@ -78,7 +86,7 @@ export function TextSummarizer() {
       toast.error(
         error.response?.data?.error ||
           error.message ||
-          "Failed to generate summary. Please try again."
+          "Failed to generate summary. Please try again.",
       );
     } finally {
       setIsLoading(false);
@@ -99,6 +107,13 @@ export function TextSummarizer() {
     <div className="grid gap-6 lg:grid-cols-2 h-full">
       <div className="space-y-6">
         <Card className="h-full flex flex-col">
+          <div className="p-4 space-y-2">
+            <Label>Save to Project</Label>
+            <ProjectSelector
+              value={selectedProjectId}
+              onValueChange={setSelectedProjectId}
+            />
+          </div>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
@@ -196,7 +211,7 @@ export function TextSummarizer() {
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <InlineLoader className="mr-2 h-4 w-4" />
                   Summarizing...
                 </>
               ) : (

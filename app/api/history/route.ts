@@ -15,12 +15,13 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { tool, title, input, output } = body;
+    const { tool, title, input, output, projectId } = body;
 
     await connectToDatabase();
 
     const historyItem = await History.create({
       userId: session.user.id,
+      projectId: projectId || null,
       tool,
       title,
       input,
@@ -44,11 +45,17 @@ export async function GET(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
+    const { searchParams } = new URL(req.url);
+    const projectId = searchParams.get("projectId");
+
     await connectToDatabase();
 
-    const history = await History.find({ userId: session.user.id })
-      .sort({ createdAt: -1 })
-      .limit(50);
+    const query: any = { userId: session.user.id };
+    if (projectId) {
+      query.projectId = projectId;
+    }
+
+    const history = await History.find(query).sort({ createdAt: -1 }).limit(50);
 
     return NextResponse.json(history);
   } catch (error) {

@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import {
   Download,
   ImageIcon,
-  Loader2,
+  // Loader2 removed - using InlineLoader
   Scissors,
   Upload,
   X,
@@ -22,13 +22,16 @@ import {
   Palette,
 } from "lucide-react";
 import { toast } from "sonner";
+import { InlineLoader } from "./InlineLoader";
 import Image from "next/image";
 import axios from "axios";
 import { CldImage } from "next-cloudinary";
 import { Input } from "./ui/input";
+import { ProjectSelector } from "@/components/ProjectSelector";
 
 export function BackgroundRemoval() {
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [processedImage, setProcessedImage] = useState<string | null>(null);
@@ -69,6 +72,10 @@ export function BackgroundRemoval() {
   };
 
   const handleRemoveBackground = async () => {
+    if (!selectedProjectId || selectedProjectId === "none") {
+      toast.error("Please select a project to continue");
+      return;
+    }
     if (!selectedFile) return;
     if (mode === "replace" && !bgPrompt) {
       toast.error("Please describe the new background");
@@ -107,19 +114,20 @@ export function BackgroundRemoval() {
           prompt: bgPrompt,
           url: response.data.url,
         },
+        projectId: selectedProjectId === "none" ? undefined : selectedProjectId,
       });
 
       toast.success(
         mode === "remove"
           ? "Background removed successfully!"
-          : "Background replaced successfully!"
+          : "Background replaced successfully!",
       );
     } catch (error: any) {
       console.error("Background processing error:", error);
       toast.error(
         error.response?.data?.error ||
           error.message ||
-          "Failed to process image. Please try again."
+          "Failed to process image. Please try again.",
       );
     } finally {
       setIsLoading(false);
@@ -161,6 +169,13 @@ export function BackgroundRemoval() {
     <div className="grid gap-6 lg:grid-cols-2 h-full">
       <div className="space-y-6">
         <Card className="h-full">
+          <div className="p-4 space-y-2">
+            <Label>Save to Project</Label>
+            <ProjectSelector
+              value={selectedProjectId}
+              onValueChange={setSelectedProjectId}
+            />
+          </div>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Upload className="h-5 w-5 text-primary" />
@@ -270,7 +285,7 @@ export function BackgroundRemoval() {
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <InlineLoader className="mr-2 h-4 w-4" />
                   Processing...
                 </>
               ) : (
@@ -307,7 +322,7 @@ export function BackgroundRemoval() {
           <CardContent className="flex-1 flex items-center justify-center min-h-[400px] bg-[url('https://media.istockphoto.com/id/1226478932/vector/checkered-transparent-background-vector-seamless-pattern.jpg?s=612x612&w=0&k=20&c=O_70rQ835194uX2b_coI3Xj8jD7D9Kq_zSc8Jg6_z9E=')] bg-repeat rounded-lg m-4 border-2 border-dashed border-muted relative overflow-hidden">
             {isLoading ? (
               <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 z-10">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <InlineLoader className="h-12 w-12" />
                 <p className="text-muted-foreground animate-pulse">
                   Removing background...
                 </p>

@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   FileText,
-  Loader2,
+  // Loader2 removed - using InlineLoader
   Upload,
   X,
   CheckCircle2,
@@ -23,8 +23,10 @@ import {
   Trophy,
 } from "lucide-react";
 import { toast } from "sonner";
+import { InlineLoader } from "./InlineLoader";
 import axios from "axios";
 import { useUploadThing } from "@/lib/uploadthing";
+import { ProjectSelector } from "@/components/ProjectSelector";
 
 interface AnalysisResult {
   score: number;
@@ -36,6 +38,7 @@ interface AnalysisResult {
 
 export function ResumeReviewer() {
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState("");
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
@@ -86,6 +89,10 @@ export function ResumeReviewer() {
   };
 
   const handleAnalyze = async () => {
+    if (!selectedProjectId || selectedProjectId === "none") {
+      toast.error("Please select a project to continue");
+      return;
+    }
     if (!selectedFile) return;
 
     setIsLoading(true);
@@ -121,6 +128,7 @@ export function ResumeReviewer() {
           jobDescription: jobDescription.substring(0, 100) + "...",
         },
         output: response.data,
+        projectId: selectedProjectId === "none" ? undefined : selectedProjectId,
       });
 
       toast.success("Resume analyzed successfully!");
@@ -129,7 +137,7 @@ export function ResumeReviewer() {
       toast.error(
         error.response?.data?.error ||
           error.message ||
-          "Failed to analyze resume. Please try again."
+          "Failed to analyze resume. Please try again.",
       );
     } finally {
       setIsLoading(false);
@@ -147,7 +155,14 @@ export function ResumeReviewer() {
   return (
     <div className="grid gap-6 lg:grid-cols-2 h-full">
       <div className="space-y-6">
-        <Card className="h-full">
+        <Card className="p-4 space-y-2">
+          <div>
+            <Label>Save to Project</Label>
+            <ProjectSelector
+              value={selectedProjectId}
+              onValueChange={setSelectedProjectId}
+            />
+          </div>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Upload className="h-5 w-5 text-primary" />
@@ -238,7 +253,7 @@ export function ResumeReviewer() {
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <InlineLoader className="mr-2 h-4 w-4" />
                   Analyzing...
                 </>
               ) : (
@@ -266,7 +281,7 @@ export function ResumeReviewer() {
           <CardContent className="flex-1 overflow-y-auto max-h-[600px]">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-4">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <InlineLoader className="h-12 w-12" />
                 <p className="text-muted-foreground animate-pulse">
                   Scanning your resume...
                 </p>

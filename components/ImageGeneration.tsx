@@ -20,14 +20,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, ImageIcon, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { Download, ImageIcon, Sparkles, Wand2 } from "lucide-react";
+import { InlineLoader } from "./InlineLoader";
 import { toast } from "sonner";
 import Image from "next/image";
 import axios from "axios";
+import { ProjectSelector } from "@/components/ProjectSelector";
 
 export function ImageGeneration() {
   const [isLoading, setIsLoading] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     prompt: "",
@@ -36,7 +39,7 @@ export function ImageGeneration() {
   });
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -71,6 +74,10 @@ export function ImageGeneration() {
   };
 
   const handleGenerate = async () => {
+    if (!selectedProjectId || selectedProjectId === "none") {
+      toast.error("Please select a project to continue");
+      return;
+    }
     if (!formData.prompt) {
       toast.error("Please enter a prompt");
       return;
@@ -97,6 +104,7 @@ export function ImageGeneration() {
           resolution: formData.resolution,
         },
         output: response.data.url,
+        projectId: selectedProjectId === "none" ? undefined : selectedProjectId,
       });
 
       toast.success("Image generated successfully!");
@@ -105,7 +113,7 @@ export function ImageGeneration() {
       toast.error(
         error.response?.data?.error ||
           error.message ||
-          "Failed to generate image. Please try again."
+          "Failed to generate image. Please try again.",
       );
     } finally {
       setIsLoading(false);
@@ -136,6 +144,13 @@ export function ImageGeneration() {
     <div className="grid gap-6 lg:grid-cols-2 h-full">
       <div className="space-y-6">
         <Card className="h-full">
+          <div className="p-4 space-y-2">
+            <Label>Save to Project</Label>
+            <ProjectSelector
+              value={selectedProjectId}
+              onValueChange={setSelectedProjectId}
+            />
+          </div>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ImageIcon className="h-5 w-5 text-primary" />
@@ -157,7 +172,7 @@ export function ImageGeneration() {
                   disabled={isEnhancing || !formData.prompt}
                 >
                   {isEnhancing ? (
-                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                    <InlineLoader className="mr-2 h-3 w-3" />
                   ) : (
                     <Wand2 className="mr-2 h-3 w-3" />
                   )}
@@ -226,7 +241,7 @@ export function ImageGeneration() {
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <InlineLoader className="mr-2 h-4 w-4" />
                   Generating...
                 </>
               ) : (
@@ -257,7 +272,7 @@ export function ImageGeneration() {
           <CardContent className="flex-1 flex items-center justify-center min-h-[400px] bg-muted/20 rounded-lg m-4 border-2 border-dashed border-muted relative overflow-hidden">
             {isLoading ? (
               <div className="flex flex-col items-center gap-4">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <InlineLoader className="h-12 w-12" />
                 <p className="text-muted-foreground animate-pulse">
                   Creating your masterpiece...
                 </p>

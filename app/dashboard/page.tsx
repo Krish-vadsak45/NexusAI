@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
-  Loader2,
+  // Loader2 replaced by InlineLoader
   History as HistoryIcon,
   FileText,
   Type,
@@ -37,6 +37,7 @@ import {
   Briefcase,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { InlineLoader } from "@/components/InlineLoader";
 import { CldImage } from "next-cloudinary";
 
 interface HistoryItem {
@@ -132,10 +133,10 @@ export default function Dashboard() {
                 {input.prompt
                   ? "Prompt"
                   : input.context
-                  ? "Context"
-                  : input.jobDescription
-                  ? "Job Description"
-                  : "Input Text"}
+                    ? "Context"
+                    : input.jobDescription
+                      ? "Job Description"
+                      : "Input Text"}
               </span>
               <div className="text-sm bg-background p-3 rounded-md border whitespace-pre-wrap max-h-40 overflow-y-auto shadow-sm">
                 {input.text ||
@@ -331,7 +332,7 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <InlineLoader className="h-8 w-8" />
       </div>
     );
   }

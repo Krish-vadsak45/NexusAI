@@ -6,7 +6,6 @@ import { Hero } from "@/components/hero";
 import InfiniteScrollText from "@/components/infinite-scroll";
 import { Pricing } from "@/components/pricing";
 import { SocialProof } from "@/components/social-proof";
-import Image from "next/image";
 
 export default function Home() {
   return (

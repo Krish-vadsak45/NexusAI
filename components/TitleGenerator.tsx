@@ -22,10 +22,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Copy, Loader2, Sparkles, Check, TrendingUp, Info } from "lucide-react";
+import { Copy, Sparkles, Check, TrendingUp, Info } from "lucide-react";
+import { InlineLoader } from "./InlineLoader";
 import { toast } from "sonner";
 import axios from "axios";
 import { Badge } from "@/components/ui/badge";
+import { ProjectSelector } from "@/components/ProjectSelector";
 
 interface TitleData {
   title: string;
@@ -49,7 +51,7 @@ const formSchema = z.object({
     ],
     {
       required_error: "Category is required",
-    }
+    },
   ),
   tone: z.enum(["catchy", "professional", "seo", "question", "dramatic"], {
     required_error: "Tone is required",
@@ -60,6 +62,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 export function TitleGenerator() {
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [generatedTitles, setGeneratedTitles] = useState<TitleData[]>([]);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
@@ -78,6 +81,10 @@ export function TitleGenerator() {
   });
 
   const onSubmit = async (values: FormValues) => {
+    if (!selectedProjectId || selectedProjectId === "none") {
+      toast.error("Please select a project to continue");
+      return;
+    }
     setIsLoading(true);
     setGeneratedTitles([]);
 
@@ -93,6 +100,8 @@ export function TitleGenerator() {
           title: values.topic,
           input: values,
           output: response.data.titles,
+          projectId:
+            selectedProjectId === "none" ? undefined : selectedProjectId,
         });
 
         toast.success("Titles generated and saved!");
@@ -103,7 +112,7 @@ export function TitleGenerator() {
       console.error(error);
       toast.error(
         error.response?.data?.error ||
-          "Failed to generate titles. Please try again."
+          "Failed to generate titles. Please try again.",
       );
     } finally {
       setIsLoading(false);
@@ -121,6 +130,13 @@ export function TitleGenerator() {
     <div className="grid gap-6 lg:grid-cols-2 h-full">
       <div className="space-y-6">
         <Card className="h-full">
+          <div className="p-4 space-y-2">
+            <Label>Save to Project</Label>
+            <ProjectSelector
+              value={selectedProjectId}
+              onValueChange={setSelectedProjectId}
+            />
+          </div>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
@@ -221,7 +237,7 @@ export function TitleGenerator() {
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <InlineLoader className="mr-2 h-4 w-4" />
                   Generating...
                 </>
               ) : (
@@ -269,8 +285,8 @@ export function TitleGenerator() {
                             item.score >= 90
                               ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                               : item.score >= 75
-                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                              : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                                : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
                           }`}
                         >
                           <TrendingUp className="h-3 w-3" />

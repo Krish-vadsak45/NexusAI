@@ -22,8 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { InlineLoader } from "./InlineLoader";
 import {
-  Loader2,
+  // Loader2 removed - using InlineLoader
   Copy,
   Wand2,
   FileText,
@@ -35,6 +36,7 @@ import {
 import { toast } from "sonner";
 import axios from "axios";
 import ReactMarkdown from "react-markdown";
+import { ProjectSelector } from "@/components/ProjectSelector";
 
 // Define the structure of our AI response
 interface GeneratedData {
@@ -70,6 +72,7 @@ type FormValues = z.infer<typeof formSchema>;
 export function ArticleWriter() {
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<GeneratedData | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [activeTab, setActiveTab] = useState<
     "article" | "seo" | "social" | "summary"
   >("article");
@@ -91,6 +94,10 @@ export function ArticleWriter() {
   });
 
   const onSubmit = async (values: FormValues) => {
+    if (!selectedProjectId || selectedProjectId === "none") {
+      toast.error("Please select a project to continue");
+      return;
+    }
     setIsLoading(true);
     setData(null);
 
@@ -104,6 +111,7 @@ export function ArticleWriter() {
         title: values.topic,
         input: values,
         output: response.data.content,
+        projectId: selectedProjectId === "none" ? undefined : selectedProjectId,
       });
 
       toast.success("Content generated and saved!");
@@ -111,7 +119,7 @@ export function ArticleWriter() {
       console.error(error);
       toast.error(
         error.response?.data?.error ||
-          "Failed to generate content. Please try again."
+          "Failed to generate content. Please try again.",
       );
     } finally {
       setIsLoading(false);
@@ -128,6 +136,13 @@ export function ArticleWriter() {
       {/* Left Sidebar - Controls */}
       <div className="lg:col-span-4 space-y-6">
         <Card className="h-full border-muted-foreground/20 shadow-sm">
+          <div className="p-4 space-y-2">
+            <Label>Save to Project</Label>
+            <ProjectSelector
+              value={selectedProjectId}
+              onValueChange={setSelectedProjectId}
+            />
+          </div>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wand2 className="h-5 w-5 text-primary" />
@@ -271,7 +286,7 @@ export function ArticleWriter() {
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <InlineLoader className="mr-2 h-4 w-4" />
                   Generating Magic...
                 </>
               ) : (
@@ -437,7 +452,7 @@ export function ArticleWriter() {
                               Array.isArray(data.summary)
                                 ? data.summary.join("\n")
                                 : data.summary,
-                              "Summary"
+                              "Summary",
                             )
                           }
                         >
@@ -508,7 +523,7 @@ export function ArticleWriter() {
                             onClick={() =>
                               copyToClipboard(
                                 data.seo.description,
-                                "Description"
+                                "Description",
                               )
                             }
                           >
@@ -575,7 +590,7 @@ export function ArticleWriter() {
                           onClick={() =>
                             copyToClipboard(
                               data.social.twitter,
-                              "Twitter thread"
+                              "Twitter thread",
                             )
                           }
                         >
@@ -606,7 +621,7 @@ export function ArticleWriter() {
                           onClick={() =>
                             copyToClipboard(
                               data.social.linkedin,
-                              "LinkedIn post"
+                              "LinkedIn post",
                             )
                           }
                         >

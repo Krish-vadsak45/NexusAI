@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import {
   Code2,
-  Loader2,
+  // Loader2 removed - using InlineLoader
   Copy,
   Check,
   Terminal,
@@ -30,12 +30,15 @@ import {
   FileText,
 } from "lucide-react";
 import { toast } from "sonner";
+import { InlineLoader } from "./InlineLoader";
 import axios from "axios";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { ProjectSelector } from "@/components/ProjectSelector";
 
 export function CodeGenerator() {
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [prompt, setPrompt] = useState("");
   const [language, setLanguage] = useState("javascript");
   const [generatedCode, setGeneratedCode] = useState("");
@@ -44,6 +47,10 @@ export function CodeGenerator() {
   const [copied, setCopied] = useState(false);
 
   const handleGenerate = async () => {
+    if (!selectedProjectId || selectedProjectId === "none") {
+      toast.error("Please select a project to continue");
+      return;
+    }
     if (!prompt.trim()) {
       toast.error("Please describe the code you want to generate");
       return;
@@ -69,12 +76,13 @@ export function CodeGenerator() {
         title: prompt.substring(0, 50) + "...",
         input: { prompt, language },
         output: response.data.content,
+        projectId: selectedProjectId === "none" ? undefined : selectedProjectId,
       });
 
       toast.success("Code generated and saved!");
     } catch (error: any) {
       toast.error(
-        error.message || "Failed to generate code. Please try again."
+        error.message || "Failed to generate code. Please try again.",
       );
     } finally {
       setIsLoading(false);
@@ -121,6 +129,13 @@ export function CodeGenerator() {
     <div className="grid gap-6 lg:grid-cols-2 h-full">
       <div className="space-y-6">
         <Card className="h-full flex flex-col">
+          <div className="p-4 space-y-2">
+            <Label>Save to Project</Label>
+            <ProjectSelector
+              value={selectedProjectId}
+              onValueChange={setSelectedProjectId}
+            />
+          </div>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Terminal className="h-5 w-5 text-primary" />
@@ -169,7 +184,7 @@ export function CodeGenerator() {
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <InlineLoader className="mr-2 h-4 w-4" />
                   Generating Code...
                 </>
               ) : (

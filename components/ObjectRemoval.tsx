@@ -15,19 +15,22 @@ import { Label } from "@/components/ui/label";
 import {
   Download,
   ImageIcon,
-  Loader2,
+  // Loader2 removed - using InlineLoader
   Eraser,
   Upload,
   X,
   RefreshCw,
 } from "lucide-react";
+import { InlineLoader } from "./InlineLoader";
 import { toast } from "sonner";
 import Image from "next/image";
 import axios from "axios";
 import { CldImage } from "next-cloudinary";
+import { ProjectSelector } from "@/components/ProjectSelector";
 
 export function ObjectRemoval() {
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [processedImage, setProcessedImage] = useState<string | null>(null);
   const [publicId, setPublicId] = useState<string | null>(null);
@@ -69,6 +72,10 @@ export function ObjectRemoval() {
   };
 
   const handleRemoveObject = async () => {
+    if (!selectedProjectId || selectedProjectId === "none") {
+      toast.error("Please select a project to continue");
+      return;
+    }
     if (!selectedFile) return;
     if (!objectDescription) {
       toast.error("Please describe the object to process");
@@ -114,19 +121,20 @@ export function ObjectRemoval() {
           replaceWith,
           url: response.data.url,
         },
+        projectId: selectedProjectId === "none" ? undefined : selectedProjectId,
       });
 
       toast.success(
         mode === "remove"
           ? "Object removed successfully!"
-          : "Object replaced successfully!"
+          : "Object replaced successfully!",
       );
     } catch (error: any) {
       console.error("Object processing error:", error);
       toast.error(
         error.response?.data?.error ||
           error.message ||
-          "Failed to process object. Please try again."
+          "Failed to process object. Please try again.",
       );
     } finally {
       setIsLoading(false);
@@ -168,7 +176,14 @@ export function ObjectRemoval() {
   return (
     <div className="grid gap-6 lg:grid-cols-2 h-full">
       <div className="space-y-6">
-        <Card className="h-full">
+        <Card className="p-4 space-y-2">
+          <div>
+            <Label>Save to Project</Label>
+            <ProjectSelector
+              value={selectedProjectId}
+              onValueChange={setSelectedProjectId}
+            />
+          </div>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Upload className="h-5 w-5 text-primary" />
@@ -298,7 +313,7 @@ export function ObjectRemoval() {
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <InlineLoader className="mr-2 h-4 w-4" />
                   Processing...
                 </>
               ) : (
@@ -333,7 +348,7 @@ export function ObjectRemoval() {
           <CardContent className="flex-1 flex items-center justify-center min-h-[400px] bg-muted/20 rounded-lg m-4 border-2 border-dashed border-muted relative overflow-hidden">
             {isLoading ? (
               <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 z-10">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <InlineLoader className="h-12 w-12" />
                 <p className="text-muted-foreground animate-pulse">
                   Removing object...
                 </p>

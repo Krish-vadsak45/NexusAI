@@ -12,8 +12,10 @@ import {
   Trash2,
   VideoIcon,
   Zap,
-  Loader2,
+  // Loader2 replaced by InlineLoader
+  Folder,
 } from "lucide-react";
+import { InlineLoader } from "./InlineLoader";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -25,8 +27,13 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { PLANS } from "@/lib/plans";
 import axios from "axios";
@@ -38,6 +45,12 @@ const tools = [
     icon: LayoutDashboard,
     href: "/dashboard",
     color: "text-primary",
+  },
+  {
+    label: "Projects",
+    icon: Folder,
+    href: "/dashboard/projects",
+    color: "text-blue-500",
   },
   {
     label: "Nexus Studio",
@@ -107,6 +120,8 @@ export default function DashboardSidebar() {
   const [currentPlan, setCurrentPlan] = useState("Free");
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -144,7 +159,7 @@ export default function DashboardSidebar() {
       if (response.data.url) {
         window.location.href = response.data.url;
         toast.success(
-          response.data.message || `Redirecting to ${planName} plan checkout.`
+          response.data.message || `Redirecting to ${planName} plan checkout.`,
         );
       } else {
         toast.error("Failed to start checkout process");
@@ -160,13 +175,13 @@ export default function DashboardSidebar() {
   return (
     <div className="space-y-4 py-4 flex flex-col h-full bg-black border-r border-border">
       <div className="px-3 py-2 flex-1">
-        <Link href="/" className="flex items-center pl-3 mb-14 gap-2">
-          <div className="relative h-40 w-40">
+        <Link href="/" className="flex items-center justify-center">
+          <div className="relative h-10 w-10">
             <Image
-              src="/logo.png"
+              src="/logo-1.png"
               alt="NexusAI Logo"
               fill
-              className="object-contain"
+              className="object-contain relative h-40 w-40"
             />
           </div>
         </Link>
@@ -179,7 +194,7 @@ export default function DashboardSidebar() {
                 "text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:text-primary hover:bg-primary/10 rounded-lg transition",
                 pathname === route.href
                   ? "text-primary bg-primary/10"
-                  : "text-muted-foreground"
+                  : "text-muted-foreground",
               )}
             >
               <div className="flex items-center flex-1">
@@ -191,8 +206,8 @@ export default function DashboardSidebar() {
         </div>
       </div>
       <div className="px-3 py-2 border-t border-border">
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogTrigger asChild>
+        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+          <PopoverTrigger asChild>
             <div className="flex items-center p-3 w-full rounded-lg hover:bg-primary/10 cursor-pointer transition group">
               <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold mr-3 uppercase">
                 {session?.user?.name?.[0] || session?.user?.email?.[0] || "U"}
@@ -206,7 +221,50 @@ export default function DashboardSidebar() {
                 </span>
               </div>
             </div>
-          </DialogTrigger>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-3 rounded-md border bg-popover shadow-lg">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold uppercase">
+                {session?.user?.name?.[0] || session?.user?.email?.[0] || "U"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-white truncate">
+                  {session?.user?.name || session?.user?.email || "User"}
+                </div>
+                <div className="text-xs text-muted-foreground truncate">
+                  {session?.user?.email}
+                </div>
+                <div className="mt-2">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-primary text-primary-foreground">
+                    {currentPlan} Plan
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="h-px bg-border my-3" />
+            <div className="flex flex-col">
+              <button
+                onClick={() => {
+                  setPopoverOpen(false);
+                  router.push("/profile");
+                }}
+                className="text-left px-3 py-2 hover:bg-primary/5 rounded text-sm w-full"
+              >
+                Manage profile
+              </button>
+              <button
+                onClick={() => {
+                  setPopoverOpen(false);
+                  setIsOpen(true);
+                }}
+                className="text-left px-3 py-2 hover:bg-primary/5 rounded text-sm w-full mt-1"
+              >
+                Switch plan
+              </button>
+            </div>
+          </PopoverContent>
+        </Popover>
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Switch Plan</DialogTitle>
@@ -223,7 +281,7 @@ export default function DashboardSidebar() {
                       "flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-all",
                       isCurrent
                         ? "border-primary bg-primary/10 ring-1 ring-primary"
-                        : "hover:border-primary hover:bg-secondary/50"
+                        : "hover:border-primary hover:bg-secondary/50",
                     )}
                     onClick={() => handlePlanSwitch(key)}
                   >
@@ -241,7 +299,7 @@ export default function DashboardSidebar() {
                       </span>
                     </div>
                     {isLoading && !isCurrent ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      <InlineLoader className="h-4 w-4" />
                     ) : isCurrent ? (
                       <Check className="h-5 w-5 text-primary" />
                     ) : (

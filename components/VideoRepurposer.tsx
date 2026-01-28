@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Copy, Check, Upload, Video } from "lucide-react";
+import { Copy, Check, Upload, Video } from "lucide-react";
+import { InlineLoader } from "./InlineLoader";
 import { toast } from "sonner";
 import {
   Select,
@@ -16,9 +17,12 @@ import {
 } from "@/components/ui/select";
 import { CldUploadWidget } from "next-cloudinary";
 import axios from "axios";
+import { ProjectSelector } from "@/components/ProjectSelector";
+import { Label } from "@/components/ui/label";
 
 export function VideoRepurposer() {
   const [loading, setLoading] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [result, setResult] = useState<any>(null);
   const [videoUrl, setVideoUrl] = useState<string>("");
   const [videoName, setVideoName] = useState<string>("");
@@ -27,6 +31,10 @@ export function VideoRepurposer() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!selectedProjectId || selectedProjectId === "none") {
+      toast.error("Please select a project to continue");
+      return;
+    }
     setLoading(true);
     setResult(null);
 
@@ -53,12 +61,13 @@ export function VideoRepurposer() {
           videoUrl: data.videoUrl,
         },
         output: res.data.content,
+        projectId: selectedProjectId === "none" ? undefined : selectedProjectId,
       });
 
       toast.success("Content generated successfully!");
     } catch (error: any) {
       toast.error(
-        error.response?.data?.error || error.message || "Something went wrong"
+        error.response?.data?.error || error.message || "Something went wrong",
       );
     } finally {
       setLoading(false);
@@ -86,7 +95,14 @@ export function VideoRepurposer() {
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
-      <Card>
+      <Card className="p-4 space-y-2">
+        <div>
+          <Label>Save to Project</Label>
+          <ProjectSelector
+            value={selectedProjectId}
+            onValueChange={setSelectedProjectId}
+          />
+        </div>
         <CardHeader>
           <CardTitle>AI Video Repurposer</CardTitle>
         </CardHeader>
@@ -140,7 +156,7 @@ export function VideoRepurposer() {
                     variant="outline"
                     onClick={() =>
                       toast.error(
-                        "Configuration Error: Missing NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET in .env file"
+                        "Configuration Error: Missing NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET in .env file",
                       )
                     }
                     className="w-full border-dashed border-red-300 bg-red-50 hover:bg-red-100 text-red-600"
@@ -187,7 +203,7 @@ export function VideoRepurposer() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating
+                  <InlineLoader className="mr-2 h-4 w-4" /> Generating
                   Content...
                 </>
               ) : (
