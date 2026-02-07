@@ -160,6 +160,19 @@ export default function Dashboard() {
           <ReactMarkdown>{item.output.article || ""}</ReactMarkdown>
         </div>
       );
+    } else if (item.tool === "Image Generation") {
+      const imageUrl =
+        typeof item.output === "string" ? item.output : item.output.url;
+      content = (
+        <div className="relative aspect-square max-w-lg mx-auto rounded-lg overflow-hidden border shadow-sm">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageUrl}
+            alt={item.title}
+            className="object-contain w-full h-full"
+          />
+        </div>
+      );
     } else if (item.tool === "Title Generator") {
       content = (
         <ul className="grid gap-3 sm:grid-cols-2">
@@ -204,17 +217,6 @@ export default function Dashboard() {
       content = (
         <div className="bg-background p-6 rounded-lg border shadow-sm">
           <p className="text-sm leading-relaxed">{item.output}</p>
-        </div>
-      );
-    } else if (item.tool === "Image Generation") {
-      content = (
-        <div className="relative aspect-square w-full max-w-md mx-auto rounded-lg overflow-hidden border shadow-sm bg-muted/20">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={item.output}
-            alt={item.title}
-            className="object-contain w-full h-full"
-          />
         </div>
       );
     } else if (

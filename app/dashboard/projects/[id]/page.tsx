@@ -24,6 +24,9 @@ import {
   Copy,
   Check,
   Download,
+  Trash2,
+  UserCog,
+  MoreVertical,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -44,9 +47,14 @@ import {
 import { ProjectAssembler } from "@/components/ProjectAssembler";
 import { HistoryItemRenderer } from "@/components/HistoryItemRenderer";
 import { SearchAndFilter } from "@/components/SearchAndFilter";
-import MembersPanel from "@/components/MembersPanel";
 import SharedAssetsPanel from "@/components/SharedAssetsPanel";
 import { InlineLoader } from "@/components/InlineLoader";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { InviteForm } from "@/components/MembersPanel";
 
 interface Project {
   _id: string;
@@ -91,6 +99,19 @@ export default function ProjectDetailsPage(props: {
   const [inboxOpen, setInboxOpen] = useState(false);
   const [inboxLoading, setInboxLoading] = useState(false);
   const [projectInvites, setProjectInvites] = useState<any[]>([]);
+
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    async function load() {
+      const res = await fetch(`/api/projects/${params.id}/members`);
+      if (res.ok) {
+        const data = await res.json();
+        setMembers(data.members || []);
+      }
+    }
+    load();
+  }, [params.id]);
 
   const filteredItems = historyItems.filter((item) => {
     const matchesSearch = (item.title || "")
@@ -282,6 +303,31 @@ export default function ProjectDetailsPage(props: {
       .finally(() => setMembersLoading(false));
   }, [activeTab, params.id, currentUserId, project]);
 
+  const handleUpdateRole = async (memberUserId: string, newRole: string) => {
+    try {
+      await axios.patch(`/api/projects/${params.id}/members/${memberUserId}`, {
+        role: newRole,
+      });
+      toast.success("Role updated");
+      // refresh members
+      const res = await axios.get(`/api/projects/${params.id}/members`);
+      setMembers(res.data.members || []);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || "Failed to update role");
+    }
+  };
+
+  const handleRemoveMember = async (memberUserId: string) => {
+    if (!confirm("Are you sure you want to remove this member?")) return;
+    try {
+      await axios.delete(`/api/projects/${params.id}/members/${memberUserId}`);
+      toast.success("Member removed");
+      setMembers(members.filter((m) => m.userId !== memberUserId));
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || "Failed to remove member");
+    }
+  };
+
   if (loading) {
     return <div className="p-10 text-center">Loading...</div>;
   }
@@ -344,6 +390,7 @@ export default function ProjectDetailsPage(props: {
                       ]);
                       setNotifications(nRes.data.notifications || []);
                       setProjectInvites(iRes.data?.invites || []);
+                      console.log("Inbox data", nRes.data, iRes.data);
                     } catch (e) {
                       console.error(e);
                       toast.error("Failed to load inbox");
@@ -376,8 +423,8 @@ export default function ProjectDetailsPage(props: {
                         {notifications.filter(
                           (n) => n.data?.projectId === params.id,
                         ).length === 0 ? (
-                          <div className="text-sm text-muted-foreground">
-                            No project notifications
+                          <div className="text-sm text-muted-foreground py-6 text-center border-dashed border-2 rounded-lg">
+                            No pending project notifications
                           </div>
                         ) : (
                           notifications
@@ -385,81 +432,157 @@ export default function ProjectDetailsPage(props: {
                             .map((n: any) => (
                               <div
                                 key={n._id}
-                                className="p-3 border rounded flex items-start justify-between"
+                                className="p-4 border rounded-lg bg-muted/20 space-y-3"
                               >
-                                <div>
-                                  <div className="font-medium">{n.type}</div>
-                                  <div className="text-sm text-muted-foreground">
-                                    {n.data?.projectName || n.data?.projectId}
+                                <div className="flex items-start justify-between gap-4">
+                                  <div className="space-y-1 flex-1">
+                                    <div className="text-sm font-semibold capitalize flex items-center gap-2">
+                                      {n.type === "invite_sent" ? (
+                                        <>
+                                          <UserCog className="w-3.5 h-3.5 text-blue-500" />{" "}
+                                          Invite Received
+                                        </>
+                                      ) : n.type === "invite_rejected" ? (
+                                        <>
+                                          <X className="w-3.5 h-3.5 text-red-500" />{" "}
+                                          Invite Declined
+                                        </>
+                                      ) : (
+                                        n.type.replace("_", " ")
+                                      )}
+                                    </div>
+                                    <div className="text-sm text-muted-foreground leading-relaxed">
+                                      {n.type === "invite_sent" ? (
+                                        <>
+                                          <span className="font-medium text-foreground">
+                                            {n.data?.invitedByName || "Someone"}
+                                          </span>{" "}
+                                          invited you to join
+                                          <span className="font-medium text-foreground">
+                                            {" "}
+                                            {n.data?.projectName ||
+                                              "the project"}
+                                          </span>{" "}
+                                          as
+                                          <span className="font-medium text-foreground capitalize">
+                                            {" "}
+                                            {n.data?.role}
+                                          </span>
+                                          .
+                                        </>
+                                      ) : n.type === "invite_rejected" ? (
+                                        <>
+                                          <span className="font-medium text-foreground">
+                                            {n.data?.rejectedByName ||
+                                              "Someone"}
+                                          </span>{" "}
+                                          declined your invite to project.
+                                        </>
+                                      ) : (
+                                        n.data?.projectName || n.data?.projectId
+                                      )}
+                                    </div>
+                                    <div className="text-[10px] text-muted-foreground opacity-70">
+                                      {format(
+                                        new Date(n.createdAt),
+                                        "MMM d, h:mm a",
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {n.type === "invite_sent" && (
-                                    <>
-                                      <Button
-                                        size="sm"
-                                        onClick={async () => {
-                                          try {
-                                            await axios.post(
-                                              "/api/invites/respond",
-                                              {
-                                                inviteId: n.data.inviteId,
-                                                action: "accept",
-                                              },
-                                            );
-                                            toast.success("Invite accepted");
-                                            // refresh
-                                            const res =
-                                              await axios.get(
-                                                "/api/notifications",
+
+                                  <div className="flex shrink-0">
+                                    {n.type === "invite_sent" ? (
+                                      <div className="flex items-center gap-2">
+                                        <Button
+                                          size="sm"
+                                          className="h-8 px-3"
+                                          onClick={async () => {
+                                            try {
+                                              await axios.post(
+                                                "/api/invites/respond",
+                                                {
+                                                  inviteId: n.data.inviteId,
+                                                  action: "accept",
+                                                },
                                               );
-                                            setNotifications(
-                                              res.data.notifications || [],
-                                            );
-                                          } catch (e: any) {
-                                            console.error(e);
-                                            toast.error(
-                                              e?.response?.data?.error ||
-                                                "Accept failed",
-                                            );
-                                          }
-                                        }}
-                                      >
-                                        Accept
-                                      </Button>
+                                              toast.success("Invite accepted");
+                                              // refresh
+                                              const res =
+                                                await axios.get(
+                                                  "/api/notifications",
+                                                );
+                                              setNotifications(
+                                                res.data.notifications || [],
+                                              );
+                                            } catch (e: any) {
+                                              console.error(e);
+                                              toast.error(
+                                                e?.response?.data?.error ||
+                                                  "Accept failed",
+                                              );
+                                            }
+                                          }}
+                                        >
+                                          Accept
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-8 px-3"
+                                          onClick={async () => {
+                                            try {
+                                              await axios.post(
+                                                "/api/invites/respond",
+                                                {
+                                                  inviteId: n.data.inviteId,
+                                                  action: "reject",
+                                                },
+                                              );
+                                              toast.success("Invite rejected");
+                                              const res =
+                                                await axios.get(
+                                                  "/api/notifications",
+                                                );
+                                              setNotifications(
+                                                res.data.notifications || [],
+                                              );
+                                            } catch (e: any) {
+                                              console.error(e);
+                                              toast.error(
+                                                e?.response?.data?.error ||
+                                                  "Reject failed",
+                                              );
+                                            }
+                                          }}
+                                        >
+                                          Reject
+                                        </Button>
+                                      </div>
+                                    ) : (
                                       <Button
                                         variant="ghost"
                                         size="sm"
+                                        className="h-8 text-xs h-fit py-1"
                                         onClick={async () => {
                                           try {
-                                            await axios.post(
-                                              "/api/invites/respond",
-                                              {
-                                                inviteId: n.data.inviteId,
-                                                action: "reject",
-                                              },
+                                            await axios.patch(
+                                              "/api/notifications",
+                                              { id: n._id, mark: "read" },
                                             );
-                                            toast.success("Invite rejected");
-                                            const res =
-                                              await axios.get(
-                                                "/api/notifications",
-                                              );
                                             setNotifications(
-                                              res.data.notifications || [],
+                                              notifications.filter(
+                                                (prev) => prev._id !== n._id,
+                                              ),
                                             );
-                                          } catch (e: any) {
-                                            console.error(e);
-                                            toast.error(
-                                              e?.response?.data?.error ||
-                                                "Reject failed",
-                                            );
+                                          } catch (e) {
+                                            toast.error("Failed to dismiss");
                                           }
                                         }}
                                       >
-                                        Reject
+                                        Dismiss
                                       </Button>
-                                    </>
-                                  )}
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             ))
@@ -468,60 +591,77 @@ export default function ProjectDetailsPage(props: {
 
                       {isOwner && (
                         <div>
-                          <h3 className="text-sm font-semibold mb-2">
-                            Sent Invites
+                          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                            <ArrowRight className="w-3.5 h-3.5" /> Sent Invites
                           </h3>
-                          {projectInvites.length === 0 ? (
-                            <div className="text-sm text-muted-foreground">
+                          {projectInvites.filter(
+                            (iv: any) => iv.status === "pending",
+                          ).length === 0 ? (
+                            <div className="text-sm text-muted-foreground py-6 text-center border-dashed border-2 rounded-lg">
                               No pending invites
                             </div>
                           ) : (
-                            projectInvites
-                              .filter((iv: any) => iv.status === "pending")
-                              .map((iv: any) => (
-                                <div
-                                  key={iv._id}
-                                  className="p-3 border rounded flex items-start justify-between"
-                                >
-                                  <div>
-                                    <div className="font-medium">
-                                      {iv.email}
+                            <div className="space-y-3">
+                              {projectInvites
+                                .filter((iv: any) => iv.status === "pending")
+                                .map((iv: any) => (
+                                  <div
+                                    key={iv._id}
+                                    className="p-4 border rounded-xl bg-muted/10 flex items-start justify-between gap-4"
+                                  >
+                                    <div className="space-y-1">
+                                      <div className="font-semibold text-sm">
+                                        {iv.email}
+                                      </div>
+                                      <div className="text-[11px] text-muted-foreground flex items-center gap-2">
+                                        <Badge
+                                          variant="outline"
+                                          className="text-[10px] h-4 px-1 capitalize font-normal"
+                                        >
+                                          {iv.role}
+                                        </Badge>
+                                        <span>
+                                          Sent{" "}
+                                          {format(
+                                            new Date(iv.createdAt),
+                                            "MMM d",
+                                          )}
+                                        </span>
+                                      </div>
                                     </div>
-                                    <div className="text-sm text-muted-foreground">
-                                      Role: {iv.role}
+                                    <div>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10 p-2"
+                                        onClick={async () => {
+                                          try {
+                                            await axios.delete(
+                                              `/api/projects/${params.id}/invites`,
+                                              { data: { inviteId: iv._id } },
+                                            );
+                                            toast.success("Invite cancelled");
+                                            const res = await axios.get(
+                                              `/api/projects/${params.id}/invites`,
+                                            );
+                                            setProjectInvites(
+                                              res.data.invites || [],
+                                            );
+                                          } catch (e: any) {
+                                            console.error(e);
+                                            toast.error(
+                                              e?.response?.data?.error ||
+                                                "Cancel failed",
+                                            );
+                                          }
+                                        }}
+                                      >
+                                        <X className="w-4 h-4" />
+                                      </Button>
                                     </div>
                                   </div>
-                                  <div>
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      onClick={async () => {
-                                        try {
-                                          await axios.delete(
-                                            `/api/projects/${params.id}/invites`,
-                                            { data: { inviteId: iv._id } },
-                                          );
-                                          toast.success("Invite cancelled");
-                                          const res = await axios.get(
-                                            `/api/projects/${params.id}/invites`,
-                                          );
-                                          setProjectInvites(
-                                            res.data.invites || [],
-                                          );
-                                        } catch (e: any) {
-                                          console.error(e);
-                                          toast.error(
-                                            e?.response?.data?.error ||
-                                              "Cancel failed",
-                                          );
-                                        }
-                                      }}
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                </div>
-                              ))
+                                ))}
+                            </div>
                           )}
                         </div>
                       )}
@@ -547,7 +687,6 @@ export default function ProjectDetailsPage(props: {
         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-2"></div>
           <aside className="md:col-span-1 space-y-6">
-            <MembersPanel projectId={params.id} />
             <SharedAssetsPanel projectId={params.id} />
           </aside>
         </div>
@@ -708,6 +847,33 @@ export default function ProjectDetailsPage(props: {
                 You are the owner — full access
               </div>
             )}
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm">Invite</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Invite a collaborator</DialogTitle>
+                  <DialogDescription>
+                    Send an invite by email and choose a role.
+                  </DialogDescription>
+                </DialogHeader>
+                <InviteForm
+                  projectId={params.id}
+                  onInvited={() => {
+                    setOpen(false);
+                    /* reload */ fetch(`/api/projects/${params.id}/members`)
+                      .then((r) => r.json())
+                      .then((d) => setMembers(d.members || []));
+                  }}
+                />
+                <DialogFooter>
+                  <Button variant="ghost" onClick={() => setOpen(false)}>
+                    Close
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {membersLoading ? (
@@ -733,25 +899,77 @@ export default function ProjectDetailsPage(props: {
                       Role
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium">
+                      Email
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">
                       Invite status
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium">
                       Invited by
+                    </th>
+                    <th className="px-4 py-3 text-right text-sm font-medium">
+                      Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-background divide-y">
                   {members.map((m) => (
                     <tr key={m.userId || `${m.email}-${m.role}`}>
-                      <td className="px-4 py-3 text-sm">
-                        {m.userName || m.email}
-                      </td>
+                      <td className="px-4 py-3 text-sm">{m.userName}</td>
                       <td className="px-4 py-3 text-sm capitalize">{m.role}</td>
+                      <td className="px-4 py-3 text-sm">{m.userEmail}</td>
                       <td className="px-4 py-3 text-sm">
                         {m.inviteStatus || "-"}
                       </td>
                       <td className="px-4 py-3 text-sm">
                         {m.invitedBy || "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right">
+                        {/* Don't show actions for the current user (the owner themselves) to prevent self-removal/demotion in this UI */}
+                        {m.userId !== currentUserId && (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-48 p-2">
+                              <div className="flex flex-col gap-1">
+                                <div className="text-xs font-semibold text-muted-foreground px-2 py-1 mb-1">
+                                  Change Role
+                                </div>
+                                {(["owner", "editor", "viewer"] as const).map(
+                                  (r) => (
+                                    <Button
+                                      key={r}
+                                      variant={
+                                        m.role === r ? "secondary" : "ghost"
+                                      }
+                                      size="sm"
+                                      className="justify-start font-normal capitalize"
+                                      onClick={() =>
+                                        handleUpdateRole(m.userId, r)
+                                      }
+                                    >
+                                      <UserCog className="mr-2 h-4 w-4" />
+                                      {r}
+                                    </Button>
+                                  ),
+                                )}
+                                <div className="h-px bg-muted my-1" />
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="justify-start font-normal text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => handleRemoveMember(m.userId)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Remove Member
+                                </Button>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -767,7 +985,9 @@ export default function ProjectDetailsPage(props: {
                   className="flex items-center justify-between p-3 border rounded"
                 >
                   <div>
-                    <div className="font-medium">{m.userId || m.email}</div>
+                    <div className="font-medium">
+                      {m.userName || m.userEmail}
+                    </div>
                     <div className="text-sm text-muted-foreground">
                       {m.role}
                     </div>

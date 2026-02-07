@@ -6,11 +6,14 @@ import { checkProjectMembership } from "@/lib/acl";
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string; userId: string } },
+  { params }: { params: Promise<{ id: string; userId: string }> },
 ) {
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const resolvedParams = await params;
+  const { id, userId } = resolvedParams;
 
   const body = await req.json();
   const { role } = body;
@@ -22,7 +25,7 @@ export async function PATCH(
     allowed,
     project,
     member: requester,
-  } = await checkProjectMembership(session.user.id, params.id, ["viewer"]);
+  } = await checkProjectMembership(session.user.id, id, ["viewer"]);
   if (!allowed)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -34,7 +37,7 @@ export async function PATCH(
     );
 
   const member = (project as any).members?.find(
-    (m: any) => m.userId === params.userId,
+    (m: any) => m.userId === userId,
   );
   if (!member)
     return NextResponse.json({ error: "Member not found" }, { status: 404 });
@@ -58,18 +61,20 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string; userId: string } },
+  { params }: { params: Promise<{ id: string; userId: string }> },
 ) {
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id, userId } = await params;
 
   await connectToDatabase();
   const {
     allowed,
     project: project2,
     member: requester2,
-  } = await checkProjectMembership(session.user.id, params.id, ["viewer"]);
+  } = await checkProjectMembership(session.user.id, id, ["viewer"]);
   if (!allowed)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -84,7 +89,7 @@ export async function DELETE(
     );
 
   const memberIndex = (project2 as any).members?.findIndex(
-    (m: any) => m.userId === params.userId,
+    (m: any) => m.userId === userId,
   );
   if (memberIndex === -1 || memberIndex === undefined)
     return NextResponse.json({ error: "Member not found" }, { status: 404 });

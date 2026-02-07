@@ -5,6 +5,7 @@ import Invite from "@/models/Invite.model";
 import { acceptInvite } from "@/lib/invite";
 import Audit from "@/models/Audit.model";
 import Notification from "@/models/Notification.model";
+import Project from "@/models/Project.model";
 
 export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });
@@ -50,8 +51,18 @@ export async function POST(req: NextRequest) {
           targetId: invite.projectId,
           data: { inviteId: invite._id },
         });
+
+        // Mark corresponding notification as read
+        await Notification.updateMany(
+          {
+            type: "invite_sent",
+            "data.inviteId": invite._id,
+            $or: [{ email: session.user.email }, { userId: session.user.id }],
+          },
+          { $set: { read: true } },
+        );
       } catch (e) {
-        console.warn("audit create failed", e);
+        console.warn("audit/notification update failed", e);
       }
 
       return NextResponse.json({ success: true, ...result });
@@ -74,18 +85,29 @@ export async function POST(req: NextRequest) {
           targetId: invite.projectId,
           data: { inviteId: invite._id },
         });
+
+        // Mark corresponding notification as read
+        await Notification.updateMany(
+          {
+            type: "invite_sent",
+            "data.inviteId": invite._id,
+            $or: [{ email: session.user.email }, { userId: session.user.id }],
+          },
+          { $set: { read: true } },
+        );
       } catch (e) {
-        console.warn("audit create failed", e);
+        console.warn("audit update failed", e);
       }
 
       try {
         await Notification.create({
-          email: invite.invitedBy, // notify inviter
+          userId: invite.invitedBy, // notify inviter
           type: "invite_rejected",
           data: {
             projectId: invite.projectId,
             inviteId: invite._id,
             rejectedBy: session.user.id,
+            projectName: (await Project.findById(invite.projectId))?.name,
           },
         });
       } catch (nerr) {

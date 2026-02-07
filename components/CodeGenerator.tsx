@@ -35,6 +35,8 @@ import axios from "axios";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { ProjectSelector } from "@/components/ProjectSelector";
+import { TemplateLibrary } from "@/components/templates/TemplateLibrary";
+import { SaveTemplateDialog } from "@/components/templates/SaveTemplateDialog";
 
 export function CodeGenerator() {
   const [isLoading, setIsLoading] = useState(false);
@@ -45,6 +47,14 @@ export function CodeGenerator() {
   const [explanation, setExplanation] = useState("");
   const [activeTab, setActiveTab] = useState<"code" | "explanation">("code");
   const [copied, setCopied] = useState(false);
+
+  const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+
+  const handleTemplateSelect = (content: string, metadata?: any) => {
+    setPrompt(content);
+    if (metadata?.language) setLanguage(metadata.language);
+  };
 
   const handleGenerate = async () => {
     if (!selectedProjectId || selectedProjectId === "none") {
@@ -120,13 +130,27 @@ export function CodeGenerator() {
     a.download = `generated-code.${extension}`;
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
+    a.remove();
     URL.revokeObjectURL(url);
     toast.success("File downloaded successfully");
   };
 
   return (
     <div className="grid gap-6 lg:grid-cols-2 h-full">
+      <TemplateLibrary
+        open={showTemplateLibrary}
+        onOpenChange={setShowTemplateLibrary}
+        category="code-generator"
+        onSelectCallback={handleTemplateSelect}
+      />
+
+      <SaveTemplateDialog
+        open={showSaveTemplate}
+        onOpenChange={setShowSaveTemplate}
+        category="code-generator"
+        content={prompt}
+        metadata={{ language }}
+      />
       <div className="space-y-6">
         <Card className="h-full flex flex-col">
           <div className="p-4 space-y-2">
@@ -137,15 +161,44 @@ export function CodeGenerator() {
             />
           </div>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Terminal className="h-5 w-5 text-primary" />
-              Code Requirements
-            </CardTitle>
+            <div className="flex justify-between items-center w-full">
+              <CardTitle className="flex items-center gap-2">
+                <Terminal className="h-5 w-5 text-primary" />
+                Code Requirements
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTemplateLibrary(true)}
+              >
+                Templates
+              </Button>
+            </div>
             <CardDescription>
               Describe the functionality or component you need.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex-1 space-y-4">
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <Label>Requirement Prompt</Label>
+                {prompt && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowSaveTemplate(true)}
+                  >
+                    Save Template
+                  </Button>
+                )}
+              </div>
+              <Textarea
+                placeholder="e.g., Create a React hook for handling local storage with expiration..."
+                className="min-h-[250px] resize-none"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+              />
+            </div>
             <div className="space-y-2">
               <Label>Programming Language</Label>
               <Select value={language} onValueChange={setLanguage}>
@@ -164,16 +217,6 @@ export function CodeGenerator() {
                   <SelectItem value="html">HTML/CSS</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            <div className="space-y-2 flex-1 flex flex-col">
-              <Label>Description</Label>
-              <Textarea
-                placeholder="E.g., Create a React component for a newsletter signup form with validation..."
-                className="flex-1 min-h-[200px] resize-none p-4 font-mono text-sm"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-              />
             </div>
           </CardContent>
           <CardFooter>

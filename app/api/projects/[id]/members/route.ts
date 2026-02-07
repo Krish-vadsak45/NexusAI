@@ -33,46 +33,63 @@ export async function GET(
         .map(String),
     ),
   );
+  console.log("IDs to resolve:", idsToResolve);
 
   let usersById: Record<
     string,
     { email?: string; _id?: string; name?: string }
   > = {};
   if (idsToResolve.length > 0) {
-    console.log("Resolving user info for IDs:", idsToResolve);
-    const users = await User.find({ _id: { $in: idsToResolve } })
-      .select("email name")
+    // Better Auth uses 'user' collection. We query via Mongoose model updated to point there.
+    // Try to ensure we match by both string or ObjectId if needed, although Mongoose handles casting.
+    const users = await User.find({ 
+      $or: [
+        { _id: { $in: idsToResolve } },
+        // if some IDs are stored as strings in _id field (rare but possible in some adapters)
+        { id: { $in: idsToResolve } }
+      ]
+    })
+      .select("email name id")
       .lean();
+
     usersById = users.reduce((acc: any, u: any) => {
-      acc[String(u._id)] = { email: u.email, name: u.name, _id: String(u._id) };
+      const id = String(u._id || u.id);
+      acc[id] = { email: u.email, name: u.name, _id: id };
       return acc;
     }, {});
+    
+    console.log(`Resolved ${users.length} users from ${idsToResolve.length} IDs`);
   }
-  console.log("Resolved usersById:", rawMembers);
-  console.log("hii", usersById[String("6957acda598325d702afde0c")]?.name);
-  const enriched = rawMembers.map(async (m: any) => ({
-    userId: m.userId,
-    userName: (await findDetails(String(m.userId), "name")) || "Unknown User",
-    role: m.role,
-    inviteStatus: m.inviteStatus,
-    invitedBy:
-      (await findDetails(String(m.invitedBy), "name")) || "Unknown User",
-    invitedByEmail:
-      (await findDetails(String(m.invitedBy), "email")) || "Unknown User",
-    joinedAt: m.joinedAt,
-    permissionsOverrides: m.permissionsOverrides || null,
-    userEmail: m.userId ? usersById[String(m.userId)]?.email || null : null,
-  }));
+
+  const deriveName = (
+    u?: { name?: string; email?: string },
+    fallbackId?: string,
+  ) => {
+    if (u?.name) return u.name;
+    if (u?.email) return u.email.split("@")[0];
+    return fallbackId
+      ? `User (${String(fallbackId).slice(0, 8)})`
+      : "Unknown User";
+  };
+
+  const enriched = rawMembers.map((m: any) => {
+    const uid = m.userId ? String(m.userId) : "";
+    const inviterId = m.invitedBy ? String(m.invitedBy) : "";
+    const user = usersById[uid];
+    const inviter = usersById[inviterId];
+
+    return {
+      userId: m.userId,
+      userName: deriveName(user, uid),
+      role: m.role,
+      inviteStatus: m.inviteStatus,
+      invitedBy: deriveName(inviter, inviterId),
+      invitedByEmail: inviter?.email || null,
+      joinedAt: m.joinedAt,
+      permissionsOverrides: m.permissionsOverrides || null,
+      userEmail: user?.email || null,
+    };
+  });
 
   return NextResponse.json({ members: enriched });
-}
-
-async function findDetails(userId: string, field?: string) {
-  if (!userId) return { user: null };
-
-  await connectToDatabase();
-  console.log("userId sgsb", userId);
-  const user = await User.findById(userId).lean();
-  console.log("user jhbcjhb", user);
-  return field == "name" ? user.name : user.email;
 }

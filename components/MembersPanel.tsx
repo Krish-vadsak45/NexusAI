@@ -1,70 +1,8 @@
-"use client";
-
-import React, { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-} from "./ui/dialog";
+import React, { useState } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-
-export default function MembersPanel({ projectId }: { projectId: string }) {
-  const [members, setMembers] = useState<any[]>([]);
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    async function load() {
-      const res = await fetch(`/api/projects/${projectId}/members`);
-      if (res.ok) {
-        const data = await res.json();
-        setMembers(data.members || []);
-      }
-    }
-    load();
-  }, [projectId]);
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Project members</h3>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm">Invite</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Invite a collaborator</DialogTitle>
-              <DialogDescription>
-                Send an invite by email and choose a role.
-              </DialogDescription>
-            </DialogHeader>
-            <InviteForm
-              projectId={projectId}
-              onInvited={() => {
-                setOpen(false);
-                /* reload */ fetch(`/api/projects/${projectId}/members`)
-                  .then((r) => r.json())
-                  .then((d) => setMembers(d.members || []));
-              }}
-            />
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setOpen(false)}>
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </div>
-  );
-}
-
-function InviteForm({
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+export function InviteForm({
   projectId,
   onInvited,
 }: {
@@ -73,6 +11,7 @@ function InviteForm({
 }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("viewer");
+  const [roleOpen, setRoleOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -106,15 +45,48 @@ function InviteForm({
       </div>
       <div>
         <label className="block text-sm font-medium mb-1">Role</label>
-        <select
-          className="w-full rounded-md border px-3 py-2"
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-        >
-          <option value="viewer">Viewer</option>
-          <option value="editor">Editor</option>
-          <option value="owner">Owner</option>
-        </select>
+        <Popover open={roleOpen} onOpenChange={setRoleOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-full justify-between">
+              <span className="capitalize">{role}</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 ml-2"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="p-2">
+            <div className="flex flex-col">
+              {[
+                { key: "viewer", label: "Viewer" },
+                { key: "editor", label: "Editor" },
+                { key: "owner", label: "Owner" },
+              ].map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => {
+                    setRole(opt.key);
+                    setRoleOpen(false);
+                  }}
+                  className={`text-left px-3 py-2 w-full rounded hover:bg-muted/30 ${role === opt.key ? "bg-muted/20 font-medium" : ""}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
       {error && <div className="text-destructive text-sm">{error}</div>}
       <div className="flex gap-2 justify-end">

@@ -73,6 +73,28 @@ export function HistoryItemRenderer({ item }: HistoryItemRendererProps) {
         </div>
       </div>
     );
+  } else if (item.tool === "Image Generation") {
+    const imageUrl =
+      typeof item.output === "string" ? item.output : item.output.url;
+    return (
+      <div className="group relative aspect-square w-full max-w-md mx-auto rounded-xl overflow-hidden border shadow-sm bg-muted">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imageUrl}
+          alt={item.title}
+          className="object-contain w-full h-full"
+        />
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => handleDownload(imageUrl, "generated-image.png")}
+          >
+            <Download className="h-4 w-4 mr-2" /> Download
+          </Button>
+        </div>
+      </div>
+    );
   } else if (item.tool === "Title Generator") {
     return (
       <ul className="grid gap-3 sm:grid-cols-2">

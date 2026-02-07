@@ -37,6 +37,8 @@ import { toast } from "sonner";
 import axios from "axios";
 import ReactMarkdown from "react-markdown";
 import { ProjectSelector } from "@/components/ProjectSelector";
+import { TemplateLibrary } from "@/components/templates/TemplateLibrary";
+import { SaveTemplateDialog } from "@/components/templates/SaveTemplateDialog";
 
 // Define the structure of our AI response
 interface GeneratedData {
@@ -73,6 +75,8 @@ export function ArticleWriter() {
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<GeneratedData | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "article" | "seo" | "social" | "summary"
   >("article");
@@ -81,6 +85,8 @@ export function ArticleWriter() {
     register,
     control,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -92,7 +98,6 @@ export function ArticleWriter() {
       language: "english",
     },
   });
-
   const onSubmit = async (values: FormValues) => {
     if (!selectedProjectId || selectedProjectId === "none") {
       toast.error("Please select a project to continue");
@@ -131,8 +136,35 @@ export function ArticleWriter() {
     toast.success(`${label} copied to clipboard`);
   };
 
+  // Watch values for saving template
+  const topic = watch("topic");
+  const keywords = watch("keywords");
+  const tone = watch("tone");
+  const length = watch("length");
+
+  const handleTemplateSelect = (content: string, metadata?: any) => {
+    setValue("topic", content);
+    if (metadata?.keywords) setValue("keywords", metadata.keywords);
+    if (metadata?.tone) setValue("tone", metadata.tone);
+    if (metadata?.length) setValue("length", metadata.length);
+  };
+
   return (
     <div className="grid gap-6 lg:grid-cols-12 h-full">
+      <TemplateLibrary
+        open={showTemplateLibrary}
+        onOpenChange={setShowTemplateLibrary}
+        category="article-writer"
+        onSelectCallback={handleTemplateSelect}
+      />
+
+      <SaveTemplateDialog
+        open={showSaveTemplate}
+        onOpenChange={setShowSaveTemplate}
+        category="article-writer"
+        content={topic}
+        metadata={{ keywords, tone, length }}
+      />
       {/* Left Sidebar - Controls */}
       <div className="lg:col-span-4 space-y-6">
         <Card className="h-full border-muted-foreground/20 shadow-sm">
@@ -144,10 +176,20 @@ export function ArticleWriter() {
             />
           </div>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Wand2 className="h-5 w-5 text-primary" />
-              Content Studio
-            </CardTitle>
+            <div className="flex justify-between items-center w-full">
+              <CardTitle className="flex items-center gap-2">
+                <Wand2 className="h-5 w-5 text-primary" />
+                Content Studio
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTemplateLibrary(true)}
+                type="button"
+              >
+                Templates
+              </Button>
+            </div>
             <CardDescription>
               Generate articles, SEO metadata, and social posts in one click.
             </CardDescription>
@@ -159,7 +201,19 @@ export function ArticleWriter() {
               className="space-y-4"
             >
               <div className="space-y-2">
-                <Label htmlFor="topic">Topic / Title</Label>
+                <div className="flex justify-between">
+                  <Label htmlFor="topic">Topic / Title</Label>
+                  {topic && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowSaveTemplate(true)}
+                      type="button"
+                    >
+                      Save as template
+                    </Button>
+                  )}
+                </div>
                 <Input
                   id="topic"
                   placeholder="e.g., The Future of AI"

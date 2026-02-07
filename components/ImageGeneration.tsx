@@ -26,6 +26,8 @@ import { toast } from "sonner";
 import Image from "next/image";
 import axios from "axios";
 import { ProjectSelector } from "@/components/ProjectSelector";
+import { TemplateLibrary } from "@/components/templates/TemplateLibrary";
+import { SaveTemplateDialog } from "@/components/templates/SaveTemplateDialog";
 
 export function ImageGeneration() {
   const [isLoading, setIsLoading] = useState(false);
@@ -37,6 +39,18 @@ export function ImageGeneration() {
     style: "realistic",
     resolution: "1024x1024",
   });
+
+  const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+
+  const handleTemplateSelect = (content: string, metadata?: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      prompt: content,
+      style: metadata?.style || prev.style,
+      resolution: metadata?.resolution || prev.resolution,
+    }));
+  };
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -103,7 +117,7 @@ export function ImageGeneration() {
           style: formData.style,
           resolution: formData.resolution,
         },
-        output: response.data.url,
+        output: { url: response.data.url },
         projectId: selectedProjectId === "none" ? undefined : selectedProjectId,
       });
 
@@ -142,6 +156,20 @@ export function ImageGeneration() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2 h-full">
+      <TemplateLibrary
+        open={showTemplateLibrary}
+        onOpenChange={setShowTemplateLibrary}
+        category="image-generation"
+        onSelectCallback={handleTemplateSelect}
+      />
+
+      <SaveTemplateDialog
+        open={showSaveTemplate}
+        onOpenChange={setShowSaveTemplate}
+        category="image-generation"
+        content={formData.prompt}
+        metadata={{ style: formData.style, resolution: formData.resolution }}
+      />
       <div className="space-y-6">
         <Card className="h-full">
           <div className="p-4 space-y-2">
@@ -152,10 +180,19 @@ export function ImageGeneration() {
             />
           </div>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ImageIcon className="h-5 w-5 text-primary" />
-              Image Configuration
-            </CardTitle>
+            <div className="flex justify-between items-center w-full">
+              <CardTitle className="flex items-center gap-2">
+                <ImageIcon className="h-5 w-5 text-primary" />
+                Image Configuration
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTemplateLibrary(true)}
+              >
+                Templates
+              </Button>
+            </div>
             <CardDescription>
               Describe the image you want to generate in detail.
             </CardDescription>
@@ -163,7 +200,18 @@ export function ImageGeneration() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="prompt">Prompt</Label>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="prompt">Prompt</Label>
+                  {formData.prompt && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowSaveTemplate(true)}
+                    >
+                      Save Template
+                    </Button>
+                  )}
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
