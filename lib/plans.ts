@@ -15,7 +15,7 @@ export const PLANS = {
       codeGenerationsPerDay: 0,
       videoRepurposePerDay: 0,
       maxWords: 600,
-      tokensPerMonth: 10_000,
+      tokensPerMonth: 100_000,
     },
 
     features: {
@@ -47,7 +47,7 @@ export const PLANS = {
       codeGenerationsPerDay: 20,
       videoRepurposePerDay: 10,
       maxWords: 3000,
-      tokensPerMonth: 200_000,
+      tokensPerMonth: 2_000_000,
     },
 
     features: {
@@ -79,7 +79,7 @@ export const PLANS = {
       codeGenerationsPerDay: 100,
       videoRepurposePerDay: 50,
       maxWords: 6000,
-      tokensPerMonth: 1_000_000,
+      tokensPerMonth: 10_000_000,
     },
 
     features: {

@@ -8,6 +8,7 @@ export interface IUser {
   image?: string;
   emailVerified: boolean;
   phonenumber?: string;
+  isAdmin?: boolean;
   _id?: mongoose.Types.ObjectId | string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -21,6 +22,7 @@ const userSchema = new Schema<IUser>(
     image: { type: String },
     emailVerified: { type: Boolean, default: false },
     phonenumber: { type: String },
+    isAdmin: { type: Boolean, default: false },
   },
   {
     timestamps: true,

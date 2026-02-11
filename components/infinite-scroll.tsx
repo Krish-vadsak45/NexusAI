@@ -13,7 +13,7 @@ export default function InfiniteScrollText({
 }: InfiniteScrollTextProps) {
   return (
     <div
-      className={`relative overflow-hidden bg-white/85 ${className}`}
+      className={`relative overflow-hidden bg-white/5 backdrop-blur-md border-y border-white/5 py-4 ${className}`}
       style={{
         maskImage:
           "linear-gradient(to right, transparent, black 10%, black 90%, transparent)",

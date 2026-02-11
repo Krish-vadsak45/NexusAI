@@ -9,22 +9,27 @@ export interface ISubscription {
   currentPeriodEnd?: Date;
 }
 
-const SubscriptionSchema = new Schema<ISubscription>({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+const SubscriptionSchema = new Schema<ISubscription>(
+  {
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 
-  planId: { type: String, default: "free" },
+    planId: { type: String, default: "free" },
 
-  stripeCustomerId: String,
-  stripeSubscriptionId: String,
+    stripeCustomerId: String,
+    stripeSubscriptionId: String,
 
-  status: {
-    type: String,
-    enum: ["active", "past_due", "cancelled"],
-    default: "active",
+    status: {
+      type: String,
+      enum: ["active", "past_due", "cancelled"],
+      default: "active",
+    },
+
+    currentPeriodEnd: Date,
   },
-
-  currentPeriodEnd: Date,
-});
+  {
+    timestamps: true,
+  },
+);
 
 export default models.Subscription ||
   model<ISubscription>("Subscription", SubscriptionSchema);

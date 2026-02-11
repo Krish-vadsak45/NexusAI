@@ -14,10 +14,9 @@ export async function POST(req: Request) {
     if (!session) {
       return NextResponse.json(
         { error: "Unauthorized. Please sign in to use this tool." },
-        { status: 401 }
+        { status: 401 },
       );
     }
-
 
     // --- NEW: CHECK USAGE ---
     const userId = session.user.id;
@@ -25,7 +24,7 @@ export async function POST(req: Request) {
     if (!usageCheck.allowed) {
       return NextResponse.json(
         { error: usageCheck.message },
-        { status: 403 } // Forbidden
+        { status: 403 }, // Forbidden
       );
     }
 
@@ -36,7 +35,7 @@ export async function POST(req: Request) {
     if (!topic || typeof topic !== "string") {
       return NextResponse.json(
         { error: "Topic is required and must be a string" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -44,7 +43,7 @@ export async function POST(req: Request) {
     if (!apiKey) {
       return NextResponse.json(
         { error: "Server configuration error: API key missing" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -98,16 +97,17 @@ export async function POST(req: Request) {
       {
         headers: { "Content-Type": "application/json" },
         validateStatus: () => true,
-      }
+      },
     );
 
     const data = await response.data;
 
     if (response.status < 200 || response.status >= 300) {
       console.error("Gemini API Error:", data);
+      await incrementUsage(userId, "article_writer", 0, "fail");
       return NextResponse.json(
         { error: data.error?.message || "Failed to generate content" },
-        { status: response.status }
+        { status: response.status },
       );
     }
 
@@ -115,9 +115,10 @@ export async function POST(req: Request) {
     let generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!generatedText) {
+      await incrementUsage(userId, "article_writer", 0, "fail");
       return NextResponse.json(
         { error: "AI generated empty content" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -128,25 +129,34 @@ export async function POST(req: Request) {
     try {
       const parsedContent = JSON.parse(generatedText);
       console.log("Parsed Content:", parsedContent);
-      const estimatedTokens = (prompt.length + (generatedText?.length || 0)) / 4; 
-      await incrementUsage(userId, "article_writer", Math.ceil(estimatedTokens));
+      const estimatedTokens =
+        (prompt.length + (generatedText?.length || 0)) / 4;
+      await incrementUsage(
+        userId,
+        "article_writer",
+        Math.ceil(estimatedTokens),
+        "success",
+      );
       return NextResponse.json({ content: parsedContent });
     } catch (e) {
       console.error("JSON Parse Error:", e);
       console.log("Raw Generated Text:", generatedText); // Log for debugging
+      await incrementUsage(userId, "article_writer", 0, "fail");
       return NextResponse.json(
         {
           error:
             "Failed to parse AI response. The content might be too long or malformed.",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
   } catch (error) {
     console.error("Error in article-writer API:", error);
+    // Note: We don't have userId if session check failed, but we handle that above
+    // If it fails here, it's likely a serious server error
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

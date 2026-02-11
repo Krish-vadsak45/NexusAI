@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Copy, Check, Upload, Video } from "lucide-react";
+import { Copy, Check, Upload, Video, BookTemplate, Save } from "lucide-react";
 import { InlineLoader } from "./InlineLoader";
 import { toast } from "sonner";
 import {
@@ -19,6 +19,27 @@ import { CldUploadWidget } from "next-cloudinary";
 import axios from "axios";
 import { ProjectSelector } from "@/components/ProjectSelector";
 import { Label } from "@/components/ui/label";
+import { TemplateLibrary } from "@/components/templates/TemplateLibrary";
+import { SaveTemplateDialog } from "@/components/templates/SaveTemplateDialog";
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={handleCopy}
+      className="h-6 w-6"
+    >
+      {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+    </Button>
+  );
+}
 
 export function VideoRepurposer() {
   const [loading, setLoading] = useState(false);
@@ -26,6 +47,19 @@ export function VideoRepurposer() {
   const [result, setResult] = useState<any>(null);
   const [videoUrl, setVideoUrl] = useState<string>("");
   const [videoName, setVideoName] = useState<string>("");
+
+  const [prompt, setPrompt] = useState("");
+  const [tone, setTone] = useState("professional");
+  const [title, setTitle] = useState("");
+
+  const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+
+  const handleTemplateSelect = (content: string, metadata?: any) => {
+    setPrompt(content);
+    if (metadata?.tone) setTone(metadata.tone);
+    if (metadata?.title) setTitle(metadata.title);
+  };
 
   const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
@@ -38,11 +72,10 @@ export function VideoRepurposer() {
     setLoading(true);
     setResult(null);
 
-    const formData = new FormData(e.currentTarget);
     const data = {
-      title: formData.get("title"),
-      context: formData.get("context"),
-      tone: formData.get("tone"),
+      title,
+      context: prompt,
+      tone,
       videoUrl: videoUrl,
     };
 
@@ -53,7 +86,7 @@ export function VideoRepurposer() {
 
       await axios.post("/api/history", {
         tool: "Video Repurposer",
-        title: data.title as string,
+        title: data.title,
         input: {
           title: data.title,
           context: data.context,
@@ -74,34 +107,38 @@ export function VideoRepurposer() {
     }
   }
 
-  const CopyButton = ({ text }: { text: string }) => {
-    const [copied, setCopied] = useState(false);
-    const handleCopy = () => {
-      navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    };
-    return (
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={handleCopy}
-        className="h-6 w-6"
-      >
-        {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-      </Button>
-    );
-  };
-
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
-      <Card className="p-4 space-y-2">
-        <div>
-          <Label>Save to Project</Label>
-          <ProjectSelector
-            value={selectedProjectId}
-            onValueChange={setSelectedProjectId}
-          />
+      <Card className="p-4 space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1">
+            <Label>Save to Project</Label>
+            <ProjectSelector
+              value={selectedProjectId}
+              onValueChange={setSelectedProjectId}
+            />
+          </div>
+          <div className="flex gap-2 self-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowTemplateLibrary(true)}
+              className="flex items-center gap-2"
+            >
+              <BookTemplate className="w-4 h-4" />
+              Templates
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSaveTemplate(true)}
+              className="flex items-center gap-2"
+              disabled={!prompt}
+            >
+              <Save className="w-4 h-4" />
+              Save
+            </Button>
+          </div>
         </div>
         <CardHeader>
           <CardTitle>AI Video Repurposer</CardTitle>
@@ -109,18 +146,21 @@ export function VideoRepurposer() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Video Title / Idea</label>
+              <Label htmlFor="video-title" className="text-sm font-medium">
+                Video Title / Idea
+              </Label>
               <Input
+                id="video-title"
                 name="title"
                 placeholder="e.g., How to learn coding in 2025"
                 required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Upload Video (Optional)
-              </label>
+              <p className="text-sm font-medium">Upload Video (Optional)</p>
               <div className="flex items-center gap-4">
                 {uploadPreset ? (
                   <CldUploadWidget
@@ -174,20 +214,25 @@ export function VideoRepurposer() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">
+              <Label htmlFor="video-context" className="text-sm font-medium">
                 Key Points / Rough Notes
-              </label>
+              </Label>
               <Textarea
+                id="video-context"
                 name="context"
                 placeholder="Paste your rough notes, transcript, or key takeaways here..."
                 className="h-32"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Tone</label>
-              <Select name="tone" defaultValue="Exciting">
-                <SelectTrigger>
+              <Label htmlFor="tone" className="text-sm font-medium">
+                Tone
+              </Label>
+              <Select name="tone" value={tone} onValueChange={setTone}>
+                <SelectTrigger id="tone">
                   <SelectValue placeholder="Select tone" />
                 </SelectTrigger>
                 <SelectContent>
@@ -214,6 +259,25 @@ export function VideoRepurposer() {
         </CardContent>
       </Card>
 
+      <TemplateLibrary
+        open={showTemplateLibrary}
+        onOpenChange={setShowTemplateLibrary}
+        category="video-repurposer"
+        onSelectCallback={handleTemplateSelect}
+      />
+
+      <SaveTemplateDialog
+        open={showSaveTemplate}
+        onOpenChange={setShowSaveTemplate}
+        category="video-repurposer"
+        content={prompt}
+        metadata={{
+          tone,
+          title,
+          videoName,
+        }}
+      />
+
       {result && (
         <div className="grid gap-6 md:grid-cols-2">
           {/* Viral Titles */}
@@ -223,9 +287,9 @@ export function VideoRepurposer() {
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">
-                {result.titles.map((t: string, i: number) => (
+                {result.titles.map((t: string) => (
                   <li
-                    key={i}
+                    key={t}
                     className="flex items-center justify-between p-2 bg-muted rounded-md"
                   >
                     <span>{t}</span>
@@ -247,9 +311,9 @@ export function VideoRepurposer() {
                 {result.youtube.description}
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                {result.youtube.tags.map((tag: string, i: number) => (
+                {result.youtube.tags.map((tag: string) => (
                   <span
-                    key={i}
+                    key={tag}
                     className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full"
                   >
                     #{tag}

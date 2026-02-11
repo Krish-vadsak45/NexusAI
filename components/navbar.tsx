@@ -30,8 +30,10 @@ export default async function Navbar() {
                 item === "Home"
                   ? "/"
                   : item === "About"
-                  ? "/about"
-                  : `/#${item.toLowerCase()}`
+                    ? "/about"
+                    : item === "Pricing"
+                      ? "/pricing"
+                      : `/#${item.toLowerCase()}`
               }
               className="relative px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors group rounded-full hover:bg-white/5"
             >

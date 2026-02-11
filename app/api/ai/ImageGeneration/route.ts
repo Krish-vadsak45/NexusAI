@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     if (!session) {
       return NextResponse.json(
         { error: "Unauthorized. Please sign in to use this tool." },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     if (!prompt || typeof prompt !== "string") {
       return NextResponse.json(
         { error: "Prompt is required and must be a string" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
     // 6. Increment Usage
     // Pollinations is free, so we assign a lower token cost (e.g., 500)
     // just to track activity against the monthly limit.
-    await incrementUsage(userId, "image_generation", 500);
+    await incrementUsage(userId, "image_generation", 500, "success");
 
     return NextResponse.json({
       url: imageUrl,
@@ -68,9 +68,18 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("Image Generation Error:", error);
+
+    // Get session again if it was successful before the error
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+    if (session?.user?.id) {
+      await incrementUsage(session.user.id, "image_generation", 0, "fail");
+    }
+
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

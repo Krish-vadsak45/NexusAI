@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     if (!session) {
       return NextResponse.json(
         { error: "Unauthorized. Please sign in to use this tool." },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     if (!apiKey) {
       return NextResponse.json(
         { error: "Server configuration error: API key missing" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -80,14 +80,15 @@ export async function POST(req: Request) {
       {
         headers: { "Content-Type": "application/json" },
         validateStatus: () => true,
-      }
+      },
     );
 
     if (response.status !== 200) {
       console.error("Gemini API Error:", response.data);
+      await incrementUsage(userId, "text_summarizer", 0, "fail");
       return NextResponse.json(
         { error: "Failed to generate summary" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -101,16 +102,23 @@ export async function POST(req: Request) {
     const outputTokens = Math.ceil(generatedText.length / 4);
     const totalTokens = inputTokens + outputTokens;
 
-    await incrementUsage(userId, "text_summarizer", totalTokens);
+    await incrementUsage(userId, "text_summarizer", totalTokens, "success");
 
     return NextResponse.json({
       summary: generatedText.trim(),
     });
   } catch (error: any) {
     console.error("Text Summarizer Error:", error);
+    // Get session again if it was successful before the error
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+    if (session?.user?.id) {
+      await incrementUsage(session.user.id, "text_summarizer", 0, "fail");
+    }
     return NextResponse.json(
       { error: error.message || "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

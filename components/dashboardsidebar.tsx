@@ -38,6 +38,7 @@ import { toast } from "sonner";
 import { PLANS } from "@/lib/plans";
 import axios from "axios";
 import Image from "next/image";
+import { Progress } from "@/components/ui/progress";
 
 const tools = [
   {
@@ -45,6 +46,12 @@ const tools = [
     icon: LayoutDashboard,
     href: "/dashboard",
     color: "text-primary",
+  },
+  {
+    label: "Usage & Quota",
+    icon: Zap,
+    href: "/dashboard/usage",
+    color: "text-amber-500",
   },
   {
     label: "Projects",
@@ -118,6 +125,9 @@ export default function DashboardSidebar() {
   const pathname = usePathname();
   const { data: session } = authClient.useSession();
   const [currentPlan, setCurrentPlan] = useState("Free");
+  const [usage, setUsage] = useState<{ used: number; limit: number } | null>(
+    null,
+  );
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -129,16 +139,32 @@ export default function DashboardSidebar() {
         const res = await axios.get("/api/profile");
         if (res.data?.user?.subscription?.planId) {
           const planId = res.data.user.subscription.planId;
-          // Capitalize first letter for display
           const planName = planId.charAt(0).toUpperCase() + planId.slice(1);
-          console.log("Fetched plan:", planName, planId);
           setCurrentPlan(planName);
         }
       } catch (error) {
         console.error("Failed to fetch profile", error);
       }
     };
+
+    const fetchUsage = async () => {
+      try {
+        const res = await axios.get("/api/profile/usage");
+        setUsage({
+          used: res.data.tokens.used,
+          limit: res.data.tokens.limit,
+        });
+      } catch (error) {
+        console.error("Failed to fetch usage", error);
+      }
+    };
+
     fetchProfile();
+    fetchUsage();
+
+    // Refresh usage every minute
+    const interval = setInterval(fetchUsage, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   const handlePlanSwitch = async (planKey: string) => {
@@ -205,7 +231,19 @@ export default function DashboardSidebar() {
           ))}
         </div>
       </div>
-      <div className="px-3 py-2 border-t border-border">
+      <div className="px-3 py-2 border-t border-border space-y-4">
+        {usage && (
+          <div className="px-3 py-2 space-y-2">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Token Usage</span>
+              <span>{Math.round((usage.used / usage.limit) * 100)}%</span>
+            </div>
+            <Progress
+              value={(usage.used / usage.limit) * 100}
+              className="h-1"
+            />
+          </div>
+        )}
         <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
           <PopoverTrigger asChild>
             <div className="flex items-center p-3 w-full rounded-lg hover:bg-primary/10 cursor-pointer transition group">

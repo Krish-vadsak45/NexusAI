@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     if (!session) {
       return NextResponse.json(
         { error: "Unauthorized. Please sign in to use this tool." },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     if (!imageFile) {
       return NextResponse.json(
         { error: "Image file is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -57,7 +57,7 @@ export async function POST(req: Request) {
         (error: any, result: any) => {
           if (error) reject(error);
           else resolve(result);
-        }
+        },
       );
       uploadStream.end(buffer);
     });
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
 
     // 6. Increment Usage
     // Cloudinary BG removal costs credits.
-    await incrementUsage(userId, "background_removal", 5000);
+    await incrementUsage(userId, "background_removal", 5000, "success");
 
     return NextResponse.json({
       url: processedUrl,
@@ -83,9 +83,18 @@ export async function POST(req: Request) {
     });
   } catch (error: any) {
     console.error("Background Removal Error:", error);
+
+    // Get session again if it was successful before the error
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+    if (session?.user?.id) {
+      await incrementUsage(session.user.id, "background_removal", 0, "fail");
+    }
+
     return NextResponse.json(
       { error: error.message || "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

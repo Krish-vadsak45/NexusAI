@@ -1,4 +1,7 @@
+"use client";
+
 import { Zap, Users, Lock, BarChart } from "lucide-react";
+import { motion } from "framer-motion";
 
 export function Features() {
   const features = [
@@ -28,9 +31,36 @@ export function Features() {
     },
   ];
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.15,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 40 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.8,
+        ease: [0.22, 1, 0.36, 1],
+      },
+    },
+  };
+
   return (
     <section className="container mx-auto px-6 py-20 md:px-8 md:py-32 lg:px-12">
-      <div className="mx-auto max-w-3xl text-center">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        className="mx-auto max-w-3xl text-center"
+      >
         <h2 className="text-balance text-3xl font-bold tracking-tight md:text-4xl lg:text-5xl">
           Everything you need to ship faster
         </h2>
@@ -38,29 +68,37 @@ export function Features() {
           A complete development platform with all the tools and services you
           need to build, deploy, and scale your applications.
         </p>
-      </div>
+      </motion.div>
 
-      <div className="mt-16 grid gap-8 md:grid-cols-2 lg:mt-20 lg:gap-10">
-        {features.map((feature, index) => (
-          <div
-            key={index}
-            className="group relative overflow-hidden rounded-2xl border border-border/50 bg-background/50 p-8 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10 lg:p-10"
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        className="mt-16 grid gap-8 md:grid-cols-2 lg:mt-20 lg:gap-10"
+      >
+        {features.map((feature) => (
+          <motion.div
+            key={feature.title}
+            variants={itemVariants}
+            whileHover={{ y: -8, scale: 1.01 }}
+            className="group relative overflow-hidden rounded-3xl border border-white/10 bg-black/40 p-8 backdrop-blur-xl transition-all duration-300 lg:p-10 shadow-2xl"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-            <div className="relative">
-              <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-colors duration-300 group-hover:bg-primary group-hover:text-primary-foreground">
-                <feature.icon className="h-6 w-6" />
+            <div className="absolute inset-0 bg-linear-to-br from-blue-500/10 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+            <div className="relative z-10">
+              <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 text-blue-400 transition-all duration-500 group-hover:bg-blue-600 group-hover:text-white group-hover:scale-110 group-hover:rotate-3 shadow-lg">
+                <feature.icon className="h-7 w-7" />
               </div>
-              <h3 className="mb-3 text-xl font-bold tracking-tight lg:text-2xl">
+              <h3 className="mb-4 text-2xl font-bold tracking-tight text-white/90">
                 {feature.title}
               </h3>
-              <p className="text-muted-foreground leading-relaxed">
+              <p className="text-gray-400 leading-relaxed text-lg">
                 {feature.description}
               </p>
             </div>
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
     </section>
   );
 }

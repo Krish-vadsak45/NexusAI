@@ -14,6 +14,10 @@
 @custom-variant dark (&:is(.dark *));
 
 /* Updated theme to match SaaS design with deep blacks and clean whites */
+html {
+  scroll-behavior: smooth;
+}
+
 :root {
   --background: oklch(0.99 0 0);
   --foreground: oklch(0.14 0 0);

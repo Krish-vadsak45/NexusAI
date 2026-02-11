@@ -15,6 +15,7 @@ export const auth = betterAuth({
   user: {
     additionalFields: {
       phonenumber: { type: "string", required: true },
+      isAdmin: { type: "boolean", required: false },
     },
   },
   emailAndPassword: {

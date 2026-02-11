@@ -2,6 +2,7 @@ import { PLANS } from "@/lib/plans";
 import connectToDatabase from "@/lib/db";
 import Usage from "@/models/Usage.model";
 import Subscription from "@/models/Subscription.model";
+import DailyUsage from "@/models/DailyUsage.model";
 
 // Map feature names to their limit keys in PLANS and usage keys in Usage model
 export const FEATURE_LIMIT_MAP = {
@@ -48,17 +49,71 @@ export async function checkUsage(userId: string, feature: FeatureName) {
     };
   }
 
-  // 3. Get or Create Usage Record
-  let usage = await Usage.findOne({ userId });
-  if (!usage) {
-    usage = await Usage.create({ userId });
-  }
+  // 3. Get or Create Usage Record with atomic reset if new day
+  const now = new Date();
+  const startOfToday = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
 
-  // 4. Check Daily Limits (Reset if new day)
+  let usage = await Usage.findOne({ userId });
+
+  if (!usage) {
+    usage = await Usage.create({ userId, date: startOfToday });
+  } else {
+    // Check if daily reset is needed (using UTC to be consistent)
+    const usageDate = new Date(usage.date);
+    const startOfUsageDate = new Date(
+      Date.UTC(
+        usageDate.getUTCFullYear(),
+        usageDate.getUTCMonth(),
+        usageDate.getUTCDate(),
+      ),
+    );
+
+    if (startOfToday > startOfUsageDate) {
+      // New day reset
+      usage = await Usage.findOneAndUpdate(
+        { userId },
+        {
+          $set: {
+            date: startOfToday,
+            articlesGenerated: 0,
+            titlesGenerated: 0,
+            imagesGenerated: 0,
+            backgroundRemovals: 0,
+            objectRemovals: 0,
+            resumeReviews: 0,
+            textSummaries: 0,
+            codeGenerations: 0,
+            videoRepurpose: 0,
+          },
+        },
+        { new: true },
+      );
+    }
+
+    // Monthly Token Reset
+    const lastTokenReset = new Date(usage.lastTokenReset);
+    const oneMonthAgo = new Date(now);
+    oneMonthAgo.setMonth(now.getMonth() - 1);
+
+    if (lastTokenReset < oneMonthAgo) {
+      usage = await Usage.findOneAndUpdate(
+        { userId },
+        {
+          $set: {
+            tokensUsed: 0,
+            lastTokenReset: now,
+          },
+        },
+        { new: true },
+      );
+    }
+  }
 
   const limitKey = FEATURE_LIMIT_MAP[feature].limit;
   const usageKey = FEATURE_LIMIT_MAP[feature].usage;
-  const currentUsage = usage[usageKey] || 0;
+  const currentUsage = (usage[usageKey] as number) || 0;
   const limit = plan.limits[limitKey];
 
   if (currentUsage >= limit) {
@@ -68,12 +123,11 @@ export async function checkUsage(userId: string, feature: FeatureName) {
     };
   }
 
-  // 5. Check Token Limits (Daily)
-  // Using tokensPerMonth as the daily limit value
+  // 5. Check Token Limits (Monthly)
   if (usage.tokensUsed >= plan.limits.tokensPerMonth) {
     return {
       allowed: false,
-      message: `Daily token limit reached. Limit: ${plan.limits.tokensPerMonth} tokens.`,
+      message: `Monthly token limit reached. Limit: ${plan.limits.tokensPerMonth.toLocaleString()} tokens.`,
     };
   }
 
@@ -86,26 +140,136 @@ export async function checkUsage(userId: string, feature: FeatureName) {
  * @param userId The user's ID
  * @param feature The feature used
  * @param tokensUsed Number of tokens consumed (optional)
+ * @param status Status of the usage (optional: 'success' | 'fail')
  */
 export async function incrementUsage(
   userId: string,
   feature: FeatureName,
-  tokensUsed: number = 0
+  tokensUsed: number = 0,
+  status?: "success" | "fail",
 ) {
   await connectToDatabase();
+
+  const usageKey = FEATURE_LIMIT_MAP[feature].usage;
+
+  // 1. Update Real-time Limits (Usage Model)
+  // We use findOneAndUpdate with $inc for atomicity
+  const usageUpdate = Usage.findOneAndUpdate(
+    { userId },
+    {
+      $inc: {
+        [usageKey]: 1,
+        tokensUsed: tokensUsed,
+      },
+    },
+    { upsert: true },
+  );
+
+  // 2. Log Historical Daily Usage (DailyUsage Model)
+  const now = new Date();
+  const startOfToday = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
+
+  const dailyInc: any = {
+    count: 1,
+    tokens: tokensUsed,
+  };
+
+  if (status === "success") {
+    dailyInc.success = 1;
+  } else if (status === "fail") {
+    dailyInc.fail = 1;
+  }
+
+  const historyUpdate = DailyUsage.findOneAndUpdate(
+    {
+      userId,
+      date: startOfToday,
+      feature: feature,
+    },
+    {
+      $inc: dailyInc,
+    },
+    { upsert: true },
+  );
+
+  // Run both updates in parallel for performance
+  await Promise.all([usageUpdate, historyUpdate]);
+}
+
+/**
+ * Gets a summary of usage and limits for a user.
+ * @param userId The user's ID
+ */
+export async function getUsageSummary(userId: string) {
+  await connectToDatabase();
+
+  const subscription = await Subscription.findOne({ user: userId });
+  const planId = subscription?.planId || "free";
+  const planKey = planId.toUpperCase() as keyof typeof PLANS;
+  const plan = PLANS[planKey];
 
   let usage = await Usage.findOne({ userId });
   if (!usage) {
     usage = await Usage.create({ userId });
   }
 
-  const usageKey = FEATURE_LIMIT_MAP[feature].usage;
-  usage[usageKey] = (usage[usageKey] || 0) + 1;
+  const now = new Date();
+  const startOfToday = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
+  const usageDate = new Date(usage.date);
+  const startOfUsageDate = new Date(
+    Date.UTC(
+      usageDate.getUTCFullYear(),
+      usageDate.getUTCMonth(),
+      usageDate.getUTCDate(),
+    ),
+  );
 
-  // Increment tokens
-  if (tokensUsed > 0) {
-    usage.tokensUsed = (usage.tokensUsed || 0) + tokensUsed;
+  if (startOfToday > startOfUsageDate) {
+    usage = await Usage.findOneAndUpdate(
+      { userId },
+      {
+        $set: {
+          date: startOfToday,
+          articlesGenerated: 0,
+          titlesGenerated: 0,
+          imagesGenerated: 0,
+          backgroundRemovals: 0,
+          objectRemovals: 0,
+          resumeReviews: 0,
+          textSummaries: 0,
+          codeGenerations: 0,
+          videoRepurpose: 0,
+        },
+      },
+      { new: true },
+    );
   }
 
-  await usage.save();
+  const summary = Object.entries(FEATURE_LIMIT_MAP).map(
+    ([feature, mapping]) => {
+      const limitKey = mapping.limit;
+      const usageKey = mapping.usage;
+      return {
+        feature,
+        used: usage[usageKey] || 0,
+        limit: plan.limits[limitKey],
+        label: feature
+          .replace(/_/g, " ")
+          .replace(/\b\w/g, (c) => c.toUpperCase()),
+      };
+    },
+  );
+
+  return {
+    planName: plan.name,
+    usage: summary,
+    tokens: {
+      used: usage.tokensUsed || 0,
+      limit: plan.limits.tokensPerMonth,
+    },
+  };
 }

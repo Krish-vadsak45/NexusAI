@@ -20,7 +20,7 @@ interface Props {
   onValueChange: (value: string) => void;
 }
 
-export function ProjectSelector({ value, onValueChange }: Props) {
+export function ProjectSelector({ value, onValueChange }: Readonly<Props>) {
   const [projects, setProjects] = useState<Project[]>([]);
 
   useEffect(() => {

@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     if (!session) {
       return NextResponse.json(
         { error: "Unauthorized. Please sign in to use this tool." },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     if (!prompt || typeof prompt !== "string") {
       return NextResponse.json(
         { error: "Prompt is required and must be a string" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     if (!apiKey) {
       return NextResponse.json(
         { error: "Server configuration error: API key missing" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
       {
         headers: { "Content-Type": "application/json" },
         validateStatus: () => true,
-      }
+      },
     );
 
     const data = await response.data;
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
       console.error("Gemini API Error:", data);
       return NextResponse.json(
         { error: data.error?.message || "Failed to generate code" },
-        { status: response.status }
+        { status: response.status },
       );
     }
 
@@ -96,7 +96,7 @@ export async function POST(req: Request) {
     if (!generatedText) {
       return NextResponse.json(
         { error: "AI generated empty content" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -112,24 +112,27 @@ export async function POST(req: Request) {
       await incrementUsage(
         userId,
         "code_generator",
-        Math.ceil(estimatedTokens)
+        Math.ceil(estimatedTokens),
+        "success",
       );
 
       return NextResponse.json({ content: parsedContent });
     } catch (e) {
       console.error("JSON Parse Error:", e);
+      await incrementUsage(userId, "code_generator", 0, "fail");
       return NextResponse.json(
         {
           error: "Failed to parse AI response.",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
   } catch (error) {
     console.error("Error in code-generator API:", error);
+    // Note: We don't increment failure here because we might not have userId
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

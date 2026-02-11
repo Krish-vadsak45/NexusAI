@@ -98,6 +98,7 @@ export default function Dashboard() {
     if (!input) return null;
 
     return (
+      
       <div className="space-y-3">
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <span className="h-px w-4 bg-muted-foreground/50"></span>
