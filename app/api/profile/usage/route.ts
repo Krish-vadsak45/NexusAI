@@ -14,6 +14,7 @@ export async function GET() {
     }
 
     const summary = await getUsageSummary(session.user.id);
+    console.log("Usage Summary:", summary);
     return NextResponse.json(summary);
   } catch (error) {
     console.error("Error fetching usage summary:", error);

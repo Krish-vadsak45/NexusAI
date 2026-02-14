@@ -21,7 +21,7 @@ export default function Home() {
         transition={{ duration: 0.5 }}
       >
         <Hero />
-        <InfiniteScrollText className="py-2 mb-30 mx-50">
+        <InfiniteScrollText className="py-2 mb-30 mt-10 mx-50">
           <img
             src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Instagram_logo.svg/2560px-Instagram_logo.svg.png"
             alt="Instagram"

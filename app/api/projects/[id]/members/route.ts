@@ -7,17 +7,17 @@ import { checkProjectMembership } from "@/lib/acl";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   await connectToDatabase();
-  const resolvedParams = await params;
   const { allowed, project } = await checkProjectMembership(
     session.user.id,
-    resolvedParams.id,
+    id,
     ["viewer"],
   );
   if (!allowed)
@@ -42,12 +42,12 @@ export async function GET(
   if (idsToResolve.length > 0) {
     // Better Auth uses 'user' collection. We query via Mongoose model updated to point there.
     // Try to ensure we match by both string or ObjectId if needed, although Mongoose handles casting.
-    const users = await User.find({ 
+    const users = await User.find({
       $or: [
         { _id: { $in: idsToResolve } },
         // if some IDs are stored as strings in _id field (rare but possible in some adapters)
-        { id: { $in: idsToResolve } }
-      ]
+        { id: { $in: idsToResolve } },
+      ],
     })
       .select("email name id")
       .lean();
@@ -57,8 +57,10 @@ export async function GET(
       acc[id] = { email: u.email, name: u.name, _id: id };
       return acc;
     }, {});
-    
-    console.log(`Resolved ${users.length} users from ${idsToResolve.length} IDs`);
+
+    console.log(
+      `Resolved ${users.length} users from ${idsToResolve.length} IDs`,
+    );
   }
 
   const deriveName = (

@@ -1,91 +1,307 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  Sparkles,
+  Wand2,
+  Shield,
+  Rocket,
+  MessageSquare,
+  Zap,
+} from "lucide-react";
 import Link from "next/link";
-import { motion, Variants } from "framer-motion";
+import {
+  motion,
+  Variants,
+  useMotionValue,
+  useSpring,
+  useTransform,
+  AnimatePresence,
+} from "framer-motion";
+import { useEffect, useRef } from "react";
 
 export function Hero() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  // Spotlight and Tilt springs
+  const springConfig = { damping: 30, stiffness: 200 };
+  const mouseXSpring = useSpring(mouseX, springConfig);
+  const mouseYSpring = useSpring(mouseY, springConfig);
+
+  // 3D Tilt transformation for the main content
+  const rotateX = useTransform(mouseYSpring, [0, 1000], [10, -10]);
+  const rotateY = useTransform(mouseXSpring, [0, 1920], [-10, 10]);
+
+  // Create the radial gradient string dynamically
+  const background = useTransform(
+    [mouseXSpring, mouseYSpring],
+    ([x, y]) =>
+      `radial-gradient(1200px circle at ${x}px ${y}px, rgba(59, 130, 246, 0.18), transparent 80%)`,
+  );
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      mouseX.set(e.clientX);
+      mouseY.set(e.clientY);
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, [mouseX, mouseY]);
+
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.2,
+        staggerChildren: 0.1,
+        delayChildren: 0.2,
       },
     },
   };
 
   const itemVariants: Variants = {
-    hidden: { opacity: 0, y: 30 },
+    hidden: { opacity: 0, y: 30, filter: "blur(12px)" },
     visible: {
       opacity: 1,
       y: 0,
+      filter: "blur(0px)",
       transition: {
-        duration: 0.6,
-        ease: [0.22, 1, 0.36, 1],
+        duration: 1,
+        ease: [0.19, 1, 0.22, 1],
       },
     },
   };
 
   return (
-    <section className="relative container mx-auto px-6 pt-24 pb-20 md:px-8 md:pt-40 md:pb-32 lg:px-12 overflow-hidden">
+    <section
+      ref={containerRef}
+      className="relative min-h-screen flex items-center justify-center pt-24 pb-20 overflow-hidden bg-black selection:bg-blue-500/30"
+    >
+      {/* Hyper-Advanced Background Complex */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        {/* Optimized Interactive Spotlight */}
+        <motion.div
+          className="absolute inset-0 opacity-50"
+          style={{ background }}
+        />
+
+        {/* Dynamic Grid Layout */}
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-15 mix-blend-soft-light" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+
+        {/* Floating Kinetic Blobs */}
+        <KineticBlob
+          color="bg-blue-600/20"
+          position="top-[10%] left-[15%]"
+          size="w-[600px] h-[600px]"
+          delay={0}
+        />
+        <KineticBlob
+          color="bg-purple-600/15"
+          position="bottom-[10%] right-[10%]"
+          size="w-[500px] h-[500px]"
+          delay={2}
+        />
+        <KineticBlob
+          color="bg-emerald-600/10"
+          position="top-[40%] right-[20%]"
+          size="w-[300px] h-[300px]"
+          delay={4}
+        />
+      </div>
+
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="mx-auto max-w-4xl text-center relative z-10"
+        className="container relative z-10 mx-auto px-6 h-full flex flex-col items-center justify-center"
       >
+        {/* Main 3D Tilt Wrapper */}
         <motion.div
-          variants={itemVariants}
-          className="mb-8 flex justify-center"
+          style={{ rotateX, rotateY, perspective: 1200 }}
+          className="w-full flex flex-col items-center"
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-sm font-medium text-white/80 backdrop-blur-md">
-            <Sparkles className="h-4 w-4 text-blue-400" />
-            <span className="bg-linear-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              Introducing NexusAI 2.0
-            </span>
-          </span>
-        </motion.div>
+          {/* Animated Tech Badge */}
+          <motion.div variants={itemVariants} className="group relative mb-12">
+            <div className="absolute -inset-1 rounded-full bg-linear-to-r from-blue-600 to-purple-600 opacity-25 blur-md transition duration-1000 group-hover:opacity-100 group-hover:duration-200" />
+            <div className="relative inline-flex items-center gap-3 rounded-full border border-white/10 bg-black/80 px-6 py-2 text-sm font-semibold backdrop-blur-3xl transition-colors hover:border-white/20">
+              <span className="flex items-center gap-1.5 text-blue-400">
+                <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                NexusAI v2.0 Live
+              </span>
+              <div className="h-4 w-px bg-white/10" />
+              <span className="text-white/70 flex items-center gap-2">
+                Enterprise Creative Suite
+                <Sparkles className="h-4 w-4 text-yellow-500 animate-bounce" />
+              </span>
+            </div>
+          </motion.div>
 
-        <motion.h1
-          variants={itemVariants}
-          className="text-balance text-5xl font-extrabold tracking-tight md:text-7xl lg:text-8xl bg-linear-to-b from-white via-white to-white/40 bg-clip-text text-transparent"
-        >
-          Create amazing content with AI tools
-        </motion.h1>
-        <motion.p
-          variants={itemVariants}
-          className="mt-8 text-pretty text-lg text-gray-400 md:text-xl lg:mt-10 max-w-2xl mx-auto"
-        >
-          Your team's toolkit to stop configuring and start innovating. Securely
-          build, deploy, and scale the best web experiences with NexusAI.
-        </motion.p>
-        <motion.div
-          variants={itemVariants}
-          className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row"
-        >
-          <Link href="/dashboard">
+          {/* Heading with Cyber Scanner Effect */}
+          <div className="relative mb-8 text-center">
+            <motion.h1
+              variants={itemVariants}
+              className="text-balance text-6xl font-black tracking-tight sm:text-8xl lg:text-9xl relative"
+            >
+              <span className="relative block bg-linear-to-b from-white to-white/40 bg-clip-text text-transparent pb-4">
+                Master Pure
+                <span className="absolute -right-4 -top-2 lg:-right-12 lg:-top-6 opacity-0 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500 fill-mode-forwards italic text-blue-500 text-3xl font-serif">
+                  A.I.
+                </span>
+              </span>
+              <span className="relative block bg-linear-to-r from-blue-400 via-blue-600 to-blue-400 bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient-x">
+                Intelligence
+              </span>
+            </motion.h1>
+
+            {/* Visual Scan Beam */}
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "100%", opacity: [0, 0.4, 0] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute left-0 top-0 w-full bg-linear-to-b from-transparent via-blue-500/30 to-transparent pointer-events-none"
+            />
+          </div>
+
+          <motion.p
+            variants={itemVariants}
+            className="mx-auto max-w-2xl text-pretty text-lg leading-relaxed text-gray-400 md:text-2xl font-medium text-center mb-12"
+          >
+            Empower your workflow with a professional suite of generative tools.
+            From visual synthesis to advanced content orchestration, NexusAI
+            redefines the boundaries of digital creation.
+          </motion.p>
+
+          {/* Luxury CTA Group */}
+          <motion.div
+            variants={itemVariants}
+            className="flex flex-col items-center justify-center gap-8 sm:flex-row"
+          >
+            <Link href="/dashboard">
+              <Button
+                size="lg"
+                className="group relative h-16 min-w-[240px] overflow-hidden rounded-full bg-blue-600 px-10 text-xl font-bold text-white transition-all hover:scale-105 active:scale-95 shadow-[0_0_40px_-10px_rgba(37,99,235,0.4)]"
+              >
+                <div className="absolute inset-0 bg-linear-to-r from-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
+                <span className="relative z-10 flex items-center gap-2">
+                  Launch Studio
+                  <ArrowRight className="h-6 w-6 transition-transform group-hover:translate-x-1.5" />
+                </span>
+              </Button>
+            </Link>
+
             <Button
               size="lg"
-              className="min-w-40 h-12 text-base bg-blue-600 hover:bg-blue-500 shadow-[0_0_20px_rgba(37,99,235,0.3)] transition-all hover:scale-105"
+              variant="outline"
+              className="h-16 min-w-[200px] rounded-full border-white/10 bg-white/5 px-10 text-xl font-bold text-white backdrop-blur-xl transition-all hover:bg-white/10 hover:border-white/20 active:scale-95"
             >
-              Get Started
-              <ArrowRight className="ml-2 h-4 w-4" />
+              Learn More
             </Button>
-          </Link>
-          <Button
-            size="lg"
-            variant="outline"
-            className="min-w-40 h-12 text-base border-white/10 bg-transparent hover:bg-white/5 transition-all"
-          >
-            Explore the Product
-          </Button>
+          </motion.div>
+        </motion.div>
+
+        {/* Floating Ecosystem Architecture (Abstracted) */}
+        <div className="absolute inset-0 -z-10 pointer-events-none select-none">
+          <FloatingNode
+            position="top-[25%] left-[8%]"
+            icon={<Zap className="text-yellow-400" />}
+            label="Vision AI"
+          />
+          <FloatingNode
+            position="top-[15%] right-[10%]"
+            icon={<Shield className="text-emerald-400" />}
+            label="Secure"
+          />
+          <FloatingNode
+            position="bottom-[25%] left-[12%]"
+            icon={<Rocket className="text-orange-400" />}
+            label="Neural Core"
+          />
+          <FloatingNode
+            position="bottom-[20%] right-[12%]"
+            icon={<Wand2 className="text-purple-400" />}
+            label="Synthesis"
+          />
+        </div>
+
+        {/* Animated Scroll Hint */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 2, duration: 1 }}
+          className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+        >
+          <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 italic">
+            Analyze Ecosystem
+          </span>
+          <div className="h-10 w-px bg-linear-to-b from-white/40 to-transparent" />
         </motion.div>
       </motion.div>
-
-      {/* Hero background decoration */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-500/5 blur-[150px] rounded-full -z-10" />
     </section>
+  );
+}
+
+function KineticBlob({
+  color,
+  position,
+  size,
+  delay,
+}: {
+  color: string;
+  position: string;
+  size: string;
+  delay: number;
+}) {
+  return (
+    <motion.div
+      animate={{
+        x: [0, 30, 0, -30, 0],
+        y: [0, -30, 0, 30, 0],
+        scale: [1, 1.1, 0.9, 1.1, 1],
+      }}
+      transition={{
+        duration: 20,
+        repeat: Infinity,
+        delay,
+        ease: "linear",
+      }}
+      className={`absolute ${position} ${size} ${color} blur-[120px] rounded-full opacity-30`}
+    />
+  );
+}
+
+function FloatingNode({
+  position,
+  icon,
+  label,
+}: {
+  position: string;
+  icon: any;
+  label: string;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.5 }}
+      animate={{
+        opacity: [0.3, 0.6, 0.3],
+        y: [0, -20, 0],
+      }}
+      transition={{
+        duration: 8 + Math.random() * 4,
+        repeat: Infinity,
+        ease: "easeInOut",
+      }}
+      className={`absolute ${position} hidden xl:flex flex-col items-center gap-3`}
+    >
+      <div className="h-16 w-16 flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-2xl transition-colors hover:border-white/20">
+        <div className="scale-125">{icon}</div>
+      </div>
+      <span className="text-[10px] font-black uppercase tracking-widest text-white/20">
+        {label}
+      </span>
+    </motion.div>
   );
 }

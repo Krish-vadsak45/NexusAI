@@ -7,20 +7,21 @@ import { checkProjectMembership } from "@/lib/acl";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   await connectToDatabase();
-  const { allowed } = await checkProjectMembership(session.user.id, params.id, [
+  const { allowed } = await checkProjectMembership(session.user.id, id, [
     "viewer",
   ]);
   if (!allowed)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const assets = await SharedAsset.find({ projectId: params.id })
+  const assets = await SharedAsset.find({ projectId: id })
     .sort({ updatedAt: -1 })
     .limit(200);
   return NextResponse.json({ assets });
@@ -28,8 +29,9 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -45,7 +47,7 @@ export async function POST(
   await connectToDatabase();
   const { allowed, project, member } = await checkProjectMembership(
     session.user.id,
-    params.id,
+    id,
     ["editor"],
   );
   if (!allowed)
@@ -56,7 +58,7 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const asset = await SharedAsset.create({
-    projectId: params.id,
+    projectId: id,
     createdBy: session.user.id,
     title: title || "",
     type,

@@ -1,5 +1,6 @@
 import { PLANS } from "@/lib/plans";
 import connectToDatabase from "@/lib/db";
+import mongoose from "mongoose";
 import Usage from "@/models/Usage.model";
 import Subscription from "@/models/Subscription.model";
 import DailyUsage from "@/models/DailyUsage.model";
@@ -216,6 +217,45 @@ export async function getUsageSummary(userId: string) {
   }
 
   const now = new Date();
+
+  // 1. Calculate the total tokens used in the current month across all tools and days
+  const startOfMonth = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+  );
+
+  const monthlyTokenAggregation = await DailyUsage.aggregate([
+    {
+      $match: {
+        $or: [
+          { userId: userId },
+          { userId: new mongoose.Types.ObjectId(userId) },
+        ],
+        date: { $gte: startOfMonth },
+      },
+    },
+    {
+      $group: {
+        _id: "$feature",
+        totalTokens: { $sum: "$tokens" },
+      },
+    },
+  ]);
+
+  // Create a map for tool-wise monthly tokens
+  const toolMonthlyMap = monthlyTokenAggregation.reduce(
+    (acc, item) => {
+      acc[item._id] = item.totalTokens;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+
+  // Calculate the grand total for the current month across all tools
+  const totalMonthlyTokens = monthlyTokenAggregation.reduce(
+    (sum, item) => sum + item.totalTokens,
+    0,
+  );
+
   const startOfToday = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
   );
@@ -256,6 +296,7 @@ export async function getUsageSummary(userId: string) {
       return {
         feature,
         used: usage[usageKey] || 0,
+        monthlyTokens: toolMonthlyMap[feature] || 0,
         limit: plan.limits[limitKey],
         label: feature
           .replace(/_/g, " ")
@@ -268,7 +309,7 @@ export async function getUsageSummary(userId: string) {
     planName: plan.name,
     usage: summary,
     tokens: {
-      used: usage.tokensUsed || 0,
+      used: totalMonthlyTokens,
       limit: plan.limits.tokensPerMonth,
     },
   };

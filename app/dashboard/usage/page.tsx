@@ -46,6 +46,7 @@ export default function UsagePage() {
     const fetchUsage = async () => {
       try {
         const response = await axios.get("/api/profile/usage");
+        console.log("Usage Data:", response.data);
         setData(response.data);
       } catch (err: any) {
         setError(err.response?.data?.error || "Failed to load usage data");
@@ -118,7 +119,7 @@ export default function UsagePage() {
                   {data.tokens.limit.toLocaleString()} tokens used
                 </span>
                 <span className="font-bold">
-                  {Math.round((data.tokens.used / data.tokens.limit) * 100)}%
+                  {((data.tokens.used / data.tokens.limit) * 100).toFixed(2)}%
                 </span>
               </div>
               <Progress
@@ -154,7 +155,12 @@ export default function UsagePage() {
             <CardContent>
               <div className="space-y-3">
                 <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Daily Limit</span>
+                  <span
+                    className="text-muted-foreground
+                    "
+                  >
+                    Daily Limit
+                  </span>
                   <span className="font-medium">
                     {item.used} / {item.limit}
                   </span>

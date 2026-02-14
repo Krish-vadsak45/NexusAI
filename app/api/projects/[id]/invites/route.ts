@@ -12,7 +12,7 @@ import Audit from "@/models/Audit.model";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   // Feature flag enforcement: if explicitly disabled, hide endpoint
   if (
@@ -51,10 +51,10 @@ export async function POST(
   // } catch (e) {
   //   console.warn("rate limit check failed", e);
   // }
-  const resolvedParams = await params;
+  const { id } = await params;
   const { allowed, project, member } = await checkProjectMembership(
     session.user.id,
-    resolvedParams.id,
+    id,
     ["editor"],
   );
   if (!allowed)
@@ -75,7 +75,7 @@ export async function POST(
 
   const invite = await Invite.create({
     token,
-    projectId: resolvedParams.id,
+    projectId: id,
     email,
     role: role || "viewer",
     invitedBy: session.user.id,
@@ -88,7 +88,7 @@ export async function POST(
       action: "invite.create",
       actor: session.user.id,
       targetType: "project",
-      targetId: resolvedParams.id,
+      targetId: id,
       data: { inviteId: invite._id, email, role: invite.role },
     });
   } catch (e) {
@@ -101,7 +101,7 @@ export async function POST(
       email,
       type: "invite_sent",
       data: {
-        projectId: resolvedParams.id,
+        projectId: id,
         projectName: (project as any).name,
         role: invite.role,
         invitedBy: session.user.id,
@@ -153,23 +153,21 @@ export async function POST(
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   await connectToDatabase();
-  const resolvedParams = await params;
-  const { allowed } = await checkProjectMembership(
-    session.user.id,
-    resolvedParams.id,
-    ["viewer"],
-  );
+  const { id } = await params;
+  const { allowed } = await checkProjectMembership(session.user.id, id, [
+    "viewer",
+  ]);
   if (!allowed)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const invites = await Invite.find({ projectId: resolvedParams.id })
+  const invites = await Invite.find({ projectId: id })
     .sort({ createdAt: -1 })
     .limit(100);
   return NextResponse.json({ invites });
@@ -177,7 +175,7 @@ export async function GET(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session)
@@ -189,10 +187,10 @@ export async function DELETE(
     return NextResponse.json({ error: "inviteId required" }, { status: 400 });
 
   await connectToDatabase();
-  const resolvedParams = await params;
+  const { id } = await params;
   const { allowed, member } = await checkProjectMembership(
     session.user.id,
-    resolvedParams.id,
+    id,
     ["editor"],
   );
   if (!allowed)
