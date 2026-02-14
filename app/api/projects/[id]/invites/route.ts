@@ -198,7 +198,7 @@ export async function DELETE(
 
   const invite = await Invite.findOne({
     _id: inviteId,
-    projectId: resolvedParams.id,
+    projectId: id,
   });
   if (!invite)
     return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -219,7 +219,7 @@ export async function DELETE(
       action: "invite.cancel",
       actor: session.user.id,
       targetType: "project",
-      targetId: resolvedParams.id,
+      targetId: id,
       data: { inviteId: invite._id },
     });
   } catch (e) {
@@ -231,7 +231,7 @@ export async function DELETE(
       email: invite.email,
       type: "invite_revoked",
       data: {
-        projectId: resolvedParams.id,
+        projectId: id,
         inviteId: invite._id,
         cancelledBy: session.user.id,
       },
