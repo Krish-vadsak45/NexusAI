@@ -138,8 +138,8 @@ export function ImageGeneration() {
     if (!generatedImage) return;
 
     try {
-      const response = await fetch(generatedImage);
-      const blob = await response.blob();
+      const response = await axios.get(generatedImage, { responseType: 'blob' });
+      const blob = response.data;
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;

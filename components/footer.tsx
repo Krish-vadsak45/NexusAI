@@ -60,6 +60,8 @@ export function Footer() {
                   let href = "#";
                   if (link === "About") href = "/about";
                   else if (link === "Pricing") href = "/pricing";
+                  else if (link === "Contact") href = "/contact";
+                  else if (link === "Features") href = "/features";
 
                   return (
                     <li key={link}>

@@ -7,7 +7,6 @@ import {
   Wand2,
   Shield,
   Rocket,
-  MessageSquare,
   Zap,
 } from "lucide-react";
 import Link from "next/link";
@@ -17,41 +16,115 @@ import {
   useMotionValue,
   useSpring,
   useTransform,
-  AnimatePresence,
+  useMotionTemplate,
 } from "framer-motion";
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useMemo, memo } from "react";
+
+// Memoize sub-components to prevent unnecessary re-renders when the parent's mouse values change
+const KineticBlob = memo(({
+  color,
+  position,
+  size,
+  delay,
+}: {
+  color: string;
+  position: string;
+  size: string;
+  delay: number;
+}) => (
+  <motion.div
+    animate={{
+      x: [0, 30, 0, -30, 0],
+      y: [0, -30, 0, 30, 0],
+      scale: [1, 1.1, 0.9, 1.1, 1],
+    }}
+    transition={{
+      duration: 20,
+      repeat: Infinity,
+      delay,
+      ease: "linear",
+    }}
+    className={`absolute ${position} ${size} ${color} blur-[120px] rounded-full opacity-30 pointer-events-none will-change-transform`}
+  />
+));
+KineticBlob.displayName = "KineticBlob";
+
+const FloatingNode = memo(({
+  position,
+  icon,
+  label,
+}: {
+  position: string;
+  icon: any;
+  label: string;
+}) => (
+  <motion.div
+    initial={{ opacity: 0, scale: 0.5 }}
+    animate={{
+      opacity: [0.3, 0.6, 0.3],
+      y: [0, -20, 0],
+    }}
+    transition={{
+      duration: 8 + Math.random() * 4,
+      repeat: Infinity,
+      ease: "easeInOut",
+    }}
+    className={`absolute ${position} hidden xl:flex flex-col items-center gap-3 pointer-events-none`}
+  >
+    <div className="h-16 w-16 flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-2xl transition-colors hover:border-white/20">
+      <div className="scale-125">{icon}</div>
+    </div>
+    <span className="text-[10px] font-black uppercase tracking-widest text-white/20">
+      {label}
+    </span>
+  </motion.div>
+));
+FloatingNode.displayName = "FloatingNode";
 
 export function Hero() {
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // High-performance direct motion values
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
-  // Spotlight and Tilt springs
-  const springConfig = { damping: 30, stiffness: 200 };
+  // Snappier spring configuration: less damping, higher stiffness for "instant" feel
+  const springConfig = { damping: 25, stiffness: 400, mass: 0.5 };
   const mouseXSpring = useSpring(mouseX, springConfig);
   const mouseYSpring = useSpring(mouseY, springConfig);
 
-  // 3D Tilt transformation for the main content
-  const rotateX = useTransform(mouseYSpring, [0, 1000], [10, -10]);
-  const rotateY = useTransform(mouseXSpring, [0, 1920], [-10, 10]);
-
-  // Create the radial gradient string dynamically
-  const background = useTransform(
-    [mouseXSpring, mouseYSpring],
-    ([x, y]) =>
-      `radial-gradient(1200px circle at ${x}px ${y}px, rgba(59, 130, 246, 0.18), transparent 80%)`,
-  );
+  // Dynamic window size tracking for accurate 3D tilt
+  const [windowSize, setWindowSize] = React.useState({ width: 2000, height: 1000 });
 
   useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+    handleResize();
+    
     const handleMouseMove = (e: MouseEvent) => {
+      // Direct updates to motion values (avoids React state cycle)
       mouseX.set(e.clientX);
       mouseY.set(e.clientY);
     };
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
+
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("resize", handleResize);
+    };
   }, [mouseX, mouseY]);
 
-  const containerVariants: Variants = {
+  // Using useMotionTemplate for string interpolation is significantly faster 
+  // because it updates the CSS variable directly without generating a new JS string per frame
+  const background = useMotionTemplate`radial-gradient(1200px circle at ${mouseXSpring}px ${mouseYSpring}px, rgba(59, 130, 246, 0.15), transparent 80%)`;
+
+  const rotateX = useTransform(mouseYSpring, [0, windowSize.height], [7, -7]);
+  const rotateY = useTransform(mouseXSpring, [0, windowSize.width], [-7, 7]);
+
+  const containerVariants: Variants = useMemo(() => ({
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -60,9 +133,9 @@ export function Hero() {
         delayChildren: 0.2,
       },
     },
-  };
+  }), []);
 
-  const itemVariants: Variants = {
+  const itemVariants: Variants = useMemo(() => ({
     hidden: { opacity: 0, y: 30, filter: "blur(12px)" },
     visible: {
       opacity: 1,
@@ -73,26 +146,24 @@ export function Hero() {
         ease: [0.19, 1, 0.22, 1],
       },
     },
-  };
+  }), []);
 
   return (
     <section
       ref={containerRef}
       className="relative min-h-screen flex items-center justify-center pt-24 pb-20 overflow-hidden bg-black selection:bg-blue-500/30"
     >
-      {/* Hyper-Advanced Background Complex */}
+      {/* Background Layer - Optimized with will-change */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        {/* Optimized Interactive Spotlight */}
         <motion.div
-          className="absolute inset-0 opacity-50"
+          className="absolute inset-0 opacity-50 will-change-[background]"
           style={{ background }}
         />
 
-        {/* Dynamic Grid Layout */}
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-15 mix-blend-soft-light" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+        {/* Dynamic decorative grid */}
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-soft-light" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-20" />
 
-        {/* Floating Kinetic Blobs */}
         <KineticBlob
           color="bg-blue-600/20"
           position="top-[10%] left-[15%]"
@@ -119,12 +190,11 @@ export function Hero() {
         animate="visible"
         className="container relative z-10 mx-auto px-6 h-full flex flex-col items-center justify-center"
       >
-        {/* Main 3D Tilt Wrapper */}
         <motion.div
           style={{ rotateX, rotateY, perspective: 1200 }}
-          className="w-full flex flex-col items-center"
+          className="w-full flex flex-col items-center will-change-transform"
         >
-          {/* Animated Tech Badge */}
+          {/* Badge */}
           <motion.div variants={itemVariants} className="group relative mb-12">
             <div className="absolute -inset-1 rounded-full bg-linear-to-r from-blue-600 to-purple-600 opacity-25 blur-md transition duration-1000 group-hover:opacity-100 group-hover:duration-200" />
             <div className="relative inline-flex items-center gap-3 rounded-full border border-white/10 bg-black/80 px-6 py-2 text-sm font-semibold backdrop-blur-3xl transition-colors hover:border-white/20">
@@ -135,12 +205,12 @@ export function Hero() {
               <div className="h-4 w-px bg-white/10" />
               <span className="text-white/70 flex items-center gap-2">
                 Enterprise Creative Suite
-                <Sparkles className="h-4 w-4 text-yellow-500 animate-bounce" />
+                <Sparkles className="h-4 w-4 text-yellow-500" />
               </span>
             </div>
           </motion.div>
 
-          {/* Heading with Cyber Scanner Effect */}
+          {/* Heading */}
           <div className="relative mb-8 text-center">
             <motion.h1
               variants={itemVariants}
@@ -148,7 +218,7 @@ export function Hero() {
             >
               <span className="relative block bg-linear-to-b from-white to-white/40 bg-clip-text text-transparent pb-4">
                 Master Pure
-                <span className="absolute -right-4 -top-2 lg:-right-12 lg:-top-6 opacity-0 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500 fill-mode-forwards italic text-blue-500 text-3xl font-serif">
+                <span className="absolute -right-4 -top-2 lg:-right-12 lg:-top-6 hidden sm:block italic text-blue-500 text-3xl font-serif">
                   A.I.
                 </span>
               </span>
@@ -157,12 +227,11 @@ export function Hero() {
               </span>
             </motion.h1>
 
-            {/* Visual Scan Beam */}
+            {/* Visual Scan Beam (Optimized) */}
             <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "100%", opacity: [0, 0.4, 0] }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute left-0 top-0 w-full bg-linear-to-b from-transparent via-blue-500/30 to-transparent pointer-events-none"
+              animate={{ height: ["0%", "100%", "0%"], opacity: [0, 0.3, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute left-0 top-0 w-full bg-linear-to-b from-transparent via-blue-500/20 to-transparent pointer-events-none"
             />
           </div>
 
@@ -175,7 +244,7 @@ export function Hero() {
             redefines the boundaries of digital creation.
           </motion.p>
 
-          {/* Luxury CTA Group */}
+          {/* CTA Group */}
           <motion.div
             variants={itemVariants}
             className="flex flex-col items-center justify-center gap-8 sm:flex-row"
@@ -183,7 +252,7 @@ export function Hero() {
             <Link href="/dashboard">
               <Button
                 size="lg"
-                className="group relative h-16 min-w-[240px] overflow-hidden rounded-full bg-blue-600 px-10 text-xl font-bold text-white transition-all hover:scale-105 active:scale-95 shadow-[0_0_40px_-10px_rgba(37,99,235,0.4)]"
+                className="group relative h-16 min-w-[240px] overflow-hidden rounded-full bg-blue-600 px-10 text-xl font-bold text-white transition-all hover:scale-[1.02] active:scale-95 shadow-[0_0_40px_-10px_rgba(37,99,235,0.4)]"
               >
                 <div className="absolute inset-0 bg-linear-to-r from-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
                 <span className="relative z-10 flex items-center gap-2">
@@ -203,7 +272,7 @@ export function Hero() {
           </motion.div>
         </motion.div>
 
-        {/* Floating Ecosystem Architecture (Abstracted) */}
+        {/* Floating Architecture Icons */}
         <div className="absolute inset-0 -z-10 pointer-events-none select-none">
           <FloatingNode
             position="top-[25%] left-[8%]"
@@ -241,67 +310,5 @@ export function Hero() {
         </motion.div>
       </motion.div>
     </section>
-  );
-}
-
-function KineticBlob({
-  color,
-  position,
-  size,
-  delay,
-}: {
-  color: string;
-  position: string;
-  size: string;
-  delay: number;
-}) {
-  return (
-    <motion.div
-      animate={{
-        x: [0, 30, 0, -30, 0],
-        y: [0, -30, 0, 30, 0],
-        scale: [1, 1.1, 0.9, 1.1, 1],
-      }}
-      transition={{
-        duration: 20,
-        repeat: Infinity,
-        delay,
-        ease: "linear",
-      }}
-      className={`absolute ${position} ${size} ${color} blur-[120px] rounded-full opacity-30`}
-    />
-  );
-}
-
-function FloatingNode({
-  position,
-  icon,
-  label,
-}: {
-  position: string;
-  icon: any;
-  label: string;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.5 }}
-      animate={{
-        opacity: [0.3, 0.6, 0.3],
-        y: [0, -20, 0],
-      }}
-      transition={{
-        duration: 8 + Math.random() * 4,
-        repeat: Infinity,
-        ease: "easeInOut",
-      }}
-      className={`absolute ${position} hidden xl:flex flex-col items-center gap-3`}
-    >
-      <div className="h-16 w-16 flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-2xl transition-colors hover:border-white/20">
-        <div className="scale-125">{icon}</div>
-      </div>
-      <span className="text-[10px] font-black uppercase tracking-widest text-white/20">
-        {label}
-      </span>
-    </motion.div>
   );
 }

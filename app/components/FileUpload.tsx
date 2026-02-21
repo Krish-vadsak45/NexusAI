@@ -8,6 +8,7 @@ import {
   upload,
 } from "@imagekit/next";
 import { useRef, useState } from "react";
+import axios from "axios";
 
 interface FileUploadProps {
   onSuccess: (res: any) => void;
@@ -42,8 +43,8 @@ const FileUpload = ({ onSuccess, onProgress, fileType }: FileUploadProps) => {
     setError(null);
 
     try {
-      const authRes = await fetch("/api/auth/imagekit-auth");
-      const auth = await authRes.json();
+      const authRes = await axios.get("/api/auth/imagekit-auth");
+      const auth = authRes.data;
 
       const res = await upload({
         file,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import axios from "axios";
 import type { FormEvent } from "react";
 import type { AdminMetrics, AdminUserRow } from "@/lib/admin-queries";
 
@@ -107,15 +108,8 @@ export default function AdminDashboard({
     try {
       setLoadingMetrics(true);
       setMetricsError(null);
-      const response = await fetch("/api/admin/metrics", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      });
-      if (!response.ok) {
-        throw new Error("Failed to refresh metrics");
-      }
-      const data = (await response.json()) as AdminMetrics;
-      setMetrics(data);
+      const response = await axios.get("/api/admin/metrics");
+      setMetrics(response.data);
     } catch (error: any) {
       setMetricsError(error?.message || "Unable to refresh metrics");
     } finally {
@@ -125,22 +119,18 @@ export default function AdminDashboard({
 
   const loadUsers = useCallback(
     async (nextPage: number, nextQuery?: string) => {
-      try {
-        setLoadingUsers(true);
-        setUsersError(null);
-        const params = new URLSearchParams({
-          page: String(nextPage),
-          limit: String(usersPayload.limit),
-        });
-        if (nextQuery) {
-          params.set("q", nextQuery);
-        }
-        const response = await fetch(`/api/admin/users?${params.toString()}`);
-        if (!response.ok) {
-          throw new Error("Failed to load users");
-        }
-        const data = (await response.json()) as UserPayload;
-        setUsersPayload(data);
+    try {
+      setLoadingUsers(true);
+      setUsersError(null);
+      const params = new URLSearchParams({
+        page: String(nextPage),
+        limit: String(usersPayload.limit),
+      });
+      if (nextQuery) {
+        params.set("q", nextQuery);
+      }
+      const response = await axios.get(`/api/admin/users?${params.toString()}`);
+      setUsersPayload(response.data);
       } catch (error: any) {
         setUsersError(error?.message || "Unable to load users");
       } finally {

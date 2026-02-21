@@ -8,6 +8,7 @@ import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { CldImage } from "next-cloudinary";
 import { useState } from "react";
 import { toast } from "sonner";
+import axios from "axios";
 
 interface HistoryItem {
   _id: string;
@@ -34,8 +35,8 @@ export function HistoryItemRenderer({ item }: HistoryItemRendererProps) {
 
   const handleDownload = async (url: string, filename: string) => {
     try {
-      const response = await fetch(url);
-      const blob = await response.blob();
+      const response = await axios.get(url, { responseType: 'blob' });
+      const blob = response.data;
       const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = blobUrl;

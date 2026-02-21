@@ -138,8 +138,8 @@ export function BackgroundRemoval() {
     if (!processedImage) return;
 
     try {
-      const response = await fetch(processedImage);
-      const blob = await response.blob();
+      const response = await axios.get(processedImage, { responseType: 'blob' });
+      const blob = response.data;
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;

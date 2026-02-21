@@ -5,7 +5,6 @@ import axios from "axios";
 import { format } from "date-fns";
 import {
   ArrowLeft,
-  Clock,
   FileText,
   Folder,
   Calendar,
@@ -21,9 +20,6 @@ import {
   Eraser,
   Video,
   Briefcase,
-  Copy,
-  Check,
-  Download,
   Trash2,
   UserCog,
   MoreVertical,
@@ -104,10 +100,11 @@ export default function ProjectDetailsPage(props: {
 
   useEffect(() => {
     async function load() {
-      const res = await fetch(`/api/projects/${params.id}/members`);
-      if (res.ok) {
-        const data = await res.json();
-        setMembers(data.members || []);
+      try {
+        const response = await axios.get(`/api/projects/${params.id}/members`);
+        setMembers(response.data.members || []);
+      } catch (error) {
+        console.error("Failed to load members:", error);
       }
     }
     load();
@@ -276,12 +273,10 @@ export default function ProjectDetailsPage(props: {
     if (activeTab !== "members") return;
     if (!params.id) return;
     setMembersLoading(true);
-    fetch(`/api/projects/${params.id}/members`)
-      .then((r) => {
-        if (!r.ok) throw new Error("Failed to load members");
-        return r.json();
-      })
-      .then((d) => {
+    axios
+      .get(`/api/projects/${params.id}/members`)
+      .then((response) => {
+        const d = response.data;
         console.log("Members data", d);
         setMembers(d.members || []);
         // if we don't have currentUserId, try to infer owner by member list:
@@ -383,7 +378,9 @@ export default function ProjectDetailsPage(props: {
                     setInboxLoading(true);
                     try {
                       const [nRes, iRes] = await Promise.all([
-                        axios.get("/api/notifications"),
+                        axios.get(
+                          `/api/notifications?projectId=${params.id}&showRead=false`,
+                        ),
                         axios
                           .get(`/api/projects/${params.id}/invites`)
                           .catch(() => ({ data: { invites: [] } })),
@@ -420,172 +417,166 @@ export default function ProjectDetailsPage(props: {
                         <h3 className="text-sm font-semibold mb-2">
                           Notifications
                         </h3>
-                        {notifications.filter(
-                          (n) => n.data?.projectId === params.id,
-                        ).length === 0 ? (
+                        {notifications.length === 0 ? (
                           <div className="text-sm text-muted-foreground py-6 text-center border-dashed border-2 rounded-lg">
                             No pending project notifications
                           </div>
                         ) : (
-                          notifications
-                            .filter((n) => n.data?.projectId === params.id)
-                            .map((n: any) => (
-                              <div
-                                key={n._id}
-                                className="p-4 border rounded-lg bg-muted/20 space-y-3"
-                              >
-                                <div className="flex items-start justify-between gap-4">
-                                  <div className="space-y-1 flex-1">
-                                    <div className="text-sm font-semibold capitalize flex items-center gap-2">
-                                      {n.type === "invite_sent" ? (
-                                        <>
-                                          <UserCog className="w-3.5 h-3.5 text-blue-500" />{" "}
-                                          Invite Received
-                                        </>
-                                      ) : n.type === "invite_rejected" ? (
-                                        <>
-                                          <X className="w-3.5 h-3.5 text-red-500" />{" "}
-                                          Invite Declined
-                                        </>
-                                      ) : (
-                                        n.type.replace("_", " ")
-                                      )}
-                                    </div>
-                                    <div className="text-sm text-muted-foreground leading-relaxed">
-                                      {n.type === "invite_sent" ? (
-                                        <>
-                                          <span className="font-medium text-foreground">
-                                            {n.data?.invitedByName || "Someone"}
-                                          </span>{" "}
-                                          invited you to join
-                                          <span className="font-medium text-foreground">
-                                            {" "}
-                                            {n.data?.projectName ||
-                                              "the project"}
-                                          </span>{" "}
-                                          as
-                                          <span className="font-medium text-foreground capitalize">
-                                            {" "}
-                                            {n.data?.role}
-                                          </span>
-                                          .
-                                        </>
-                                      ) : n.type === "invite_rejected" ? (
-                                        <>
-                                          <span className="font-medium text-foreground">
-                                            {n.data?.rejectedByName ||
-                                              "Someone"}
-                                          </span>{" "}
-                                          declined your invite to project.
-                                        </>
-                                      ) : (
-                                        n.data?.projectName || n.data?.projectId
-                                      )}
-                                    </div>
-                                    <div className="text-[10px] text-muted-foreground opacity-70">
-                                      {format(
-                                        new Date(n.createdAt),
-                                        "MMM d, h:mm a",
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  <div className="flex shrink-0">
+                          notifications.map((n: any) => (
+                            <div
+                              key={n._id}
+                              className="p-4 border rounded-lg bg-muted/20 space-y-3"
+                            >
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="space-y-1 flex-1">
+                                  <div className="text-sm font-semibold capitalize flex items-center gap-2">
                                     {n.type === "invite_sent" ? (
-                                      <div className="flex items-center gap-2">
-                                        <Button
-                                          size="sm"
-                                          className="h-8 px-3"
-                                          onClick={async () => {
-                                            try {
-                                              await axios.post(
-                                                "/api/invites/respond",
-                                                {
-                                                  inviteId: n.data.inviteId,
-                                                  action: "accept",
-                                                },
-                                              );
-                                              toast.success("Invite accepted");
-                                              // refresh
-                                              const res =
-                                                await axios.get(
-                                                  "/api/notifications",
-                                                );
-                                              setNotifications(
-                                                res.data.notifications || [],
-                                              );
-                                            } catch (e: any) {
-                                              console.error(e);
-                                              toast.error(
-                                                e?.response?.data?.error ||
-                                                  "Accept failed",
-                                              );
-                                            }
-                                          }}
-                                        >
-                                          Accept
-                                        </Button>
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          className="h-8 px-3"
-                                          onClick={async () => {
-                                            try {
-                                              await axios.post(
-                                                "/api/invites/respond",
-                                                {
-                                                  inviteId: n.data.inviteId,
-                                                  action: "reject",
-                                                },
-                                              );
-                                              toast.success("Invite rejected");
-                                              const res =
-                                                await axios.get(
-                                                  "/api/notifications",
-                                                );
-                                              setNotifications(
-                                                res.data.notifications || [],
-                                              );
-                                            } catch (e: any) {
-                                              console.error(e);
-                                              toast.error(
-                                                e?.response?.data?.error ||
-                                                  "Reject failed",
-                                              );
-                                            }
-                                          }}
-                                        >
-                                          Reject
-                                        </Button>
-                                      </div>
+                                      <>
+                                        <UserCog className="w-3.5 h-3.5 text-blue-500" />{" "}
+                                        Invite Received
+                                      </>
+                                    ) : n.type === "invite_rejected" ? (
+                                      <>
+                                        <X className="w-3.5 h-3.5 text-red-500" />{" "}
+                                        Invite Declined
+                                      </>
                                     ) : (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 text-xs h-fit py-1"
-                                        onClick={async () => {
-                                          try {
-                                            await axios.patch(
-                                              "/api/notifications",
-                                              { id: n._id, mark: "read" },
-                                            );
-                                            setNotifications(
-                                              notifications.filter(
-                                                (prev) => prev._id !== n._id,
-                                              ),
-                                            );
-                                          } catch (e) {
-                                            toast.error("Failed to dismiss");
-                                          }
-                                        }}
-                                      >
-                                        Dismiss
-                                      </Button>
+                                      n.type.replace("_", " ")
+                                    )}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground leading-relaxed">
+                                    {n.type === "invite_sent" ? (
+                                      <>
+                                        <span className="font-medium text-foreground">
+                                          {n.data?.invitedByName || "Someone"}
+                                        </span>{" "}
+                                        invited you to join
+                                        <span className="font-medium text-foreground">
+                                          {" "}
+                                          {n.data?.projectName || "the project"}
+                                        </span>{" "}
+                                        as
+                                        <span className="font-medium text-foreground capitalize">
+                                          {" "}
+                                          {n.data?.role}
+                                        </span>
+                                        .
+                                      </>
+                                    ) : n.type === "invite_rejected" ? (
+                                      <>
+                                        <span className="font-medium text-foreground">
+                                          {n.data?.rejectedByName || "Someone"}
+                                        </span>{" "}
+                                        declined your invite to project.
+                                      </>
+                                    ) : (
+                                      n.data?.projectName || n.data?.projectId
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] text-muted-foreground opacity-70">
+                                    {format(
+                                      new Date(n.createdAt),
+                                      "MMM d, h:mm a",
                                     )}
                                   </div>
                                 </div>
+
+                                <div className="flex shrink-0">
+                                  {n.type === "invite_sent" ? (
+                                    <div className="flex items-center gap-2">
+                                      <Button
+                                        size="sm"
+                                        className="h-8 px-3"
+                                        onClick={async () => {
+                                          try {
+                                            await axios.post(
+                                              "/api/invites/respond",
+                                              {
+                                                inviteId: n.data.inviteId,
+                                                action: "accept",
+                                              },
+                                            );
+                                            toast.success("Invite accepted");
+                                            // refresh
+                                            const res =
+                                              await axios.get(
+                                                "/api/notifications",
+                                              );
+                                            setNotifications(
+                                              res.data.notifications || [],
+                                            );
+                                          } catch (e: any) {
+                                            console.error(e);
+                                            toast.error(
+                                              e?.response?.data?.error ||
+                                                "Accept failed",
+                                            );
+                                          }
+                                        }}
+                                      >
+                                        Accept
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 px-3"
+                                        onClick={async () => {
+                                          try {
+                                            await axios.post(
+                                              "/api/invites/respond",
+                                              {
+                                                inviteId: n.data.inviteId,
+                                                action: "reject",
+                                              },
+                                            );
+                                            toast.success("Invite rejected");
+                                            const res =
+                                              await axios.get(
+                                                "/api/notifications",
+                                              );
+                                            setNotifications(
+                                              res.data.notifications || [],
+                                            );
+                                          } catch (e: any) {
+                                            console.error(e);
+                                            toast.error(
+                                              e?.response?.data?.error ||
+                                                "Reject failed",
+                                            );
+                                          }
+                                        }}
+                                      >
+                                        Reject
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 text-xs h-fit py-1"
+                                      onClick={async () => {
+                                        try {
+                                          await axios.patch(
+                                            "/api/notifications",
+                                            { id: n._id, mark: "read" },
+                                          );
+                                          setNotifications(
+                                            notifications.filter(
+                                              (prev) => prev._id !== n._id,
+                                            ),
+                                          );
+                                        } catch (e) {
+                                          toast.error("Failed to dismiss");
+                                        }
+                                      }}
+                                    >
+                                      Dismiss
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
-                            ))
+                            </div>
+                          ))
                         )}
                       </div>
 

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import axios from "axios";
 
 export default function SharedAssetsPanel({
   projectId,
@@ -17,10 +18,11 @@ export default function SharedAssetsPanel({
 
   useEffect(() => {
     async function load() {
-      const res = await fetch(`/api/projects/${projectId}/assets`);
-      if (res.ok) {
-        const data = await res.json();
-        setAssets(data.assets || []);
+      try {
+        const response = await axios.get(`/api/projects/${projectId}/assets`);
+        setAssets(response.data.assets || []);
+      } catch (error) {
+        console.error("Failed to load assets:", error);
       }
     }
     load();
@@ -30,14 +32,12 @@ export default function SharedAssetsPanel({
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch(`/api/projects/${projectId}/assets`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, type, content }),
+      const response = await axios.post(`/api/projects/${projectId}/assets`, { 
+        title, 
+        type, 
+        content 
       });
-      if (!res.ok) throw new Error((await res.json()).error || "Failed");
-      const data = await res.json();
-      setAssets((s) => [data.asset, ...s]);
+      setAssets((s) => [response.data.asset, ...s]);
       setTitle("");
       setContent("");
     } catch (e) {

@@ -2,6 +2,15 @@
 
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import {
   Loader2,
@@ -9,6 +18,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Zap,
+  Calendar as CalendarIcon,
+  RefreshCcw,
 } from "lucide-react";
 import axios from "axios";
 
@@ -33,28 +44,57 @@ export default function UsageOverview() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(now.getUTCMonth());
+  const [selectedYear, setSelectedYear] = useState(now.getUTCFullYear());
+
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+
   useEffect(() => {
     async function fetchUsage() {
+      setLoading(true);
       try {
-        const { data: json } = await axios.get("/api/profile/usage-overview");
+        const { data: json } = await axios.get("/api/profile/usage-overview", {
+          params: {
+            month: selectedMonth,
+            year: selectedYear,
+          },
+        });
         if (json.overview) {
-          // Fill in all days of the month so the chart is always full/properly visible
-          const now = new Date();
-          const year = now.getUTCFullYear();
-          const month = now.getUTCMonth();
-          const daysInMonth = new Date(year, month + 1, 0).getDate();
+          // Fill in all days of the selected month
+          const daysInMonth = new Date(
+            selectedYear,
+            selectedMonth + 1,
+            0,
+          ).getDate();
+          const fullRangeData: UsageData[] = [];
 
-          const fullMonthData: UsageData[] = [];
           for (let i = 1; i <= daysInMonth; i++) {
-            const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(i).padStart(2, "0")}`;
+            const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-${String(i).padStart(2, "0")}`;
             const existingDay = json.overview.find(
-              (d: any) => d.date === dateStr,
+              (day: any) => day.date === dateStr,
             );
 
             if (existingDay) {
-              fullMonthData.push(existingDay);
+              fullRangeData.push(existingDay);
             } else {
-              fullMonthData.push({
+              fullRangeData.push({
                 date: dateStr,
                 totalTokens: 0,
                 totalAttempts: 0,
@@ -65,7 +105,7 @@ export default function UsageOverview() {
             }
           }
 
-          setData(fullMonthData);
+          setData(fullRangeData);
           setSummary(json.summary);
         }
       } catch (error) {
@@ -75,9 +115,15 @@ export default function UsageOverview() {
       }
     }
     fetchUsage();
-  }, []);
+  }, [selectedMonth, selectedYear]);
 
-  if (loading) {
+  const handleReset = () => {
+    const today = new Date();
+    setSelectedMonth(today.getUTCMonth());
+    setSelectedYear(today.getUTCFullYear());
+  };
+
+  if (loading && data.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-12">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -103,6 +149,76 @@ export default function UsageOverview() {
 
   return (
     <div className="space-y-6">
+      {/* Date Filter */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="p-4 flex flex-col md:flex-row items-end gap-4">
+          <div className="grid w-full max-w-sm items-center gap-1.5">
+            <Label
+              htmlFor="month-select"
+              className="text-xs font-semibold uppercase text-muted-foreground flex items-center gap-1"
+            >
+              <CalendarIcon className="w-3 h-3" /> Select Month
+            </Label>
+            <Select
+              value={selectedMonth.toString()}
+              onValueChange={(val) => setSelectedMonth(Number.parseInt(val))}
+            >
+              <SelectTrigger
+                id="month-select"
+                className="bg-background border-primary/20"
+              >
+                <SelectValue placeholder="Month" />
+              </SelectTrigger>
+              <SelectContent>
+                {months.map((m, i) => (
+                  <SelectItem key={m} value={i.toString()}>
+                    {m}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid w-full max-w-sm items-center gap-1.5">
+            <Label
+              htmlFor="year-select"
+              className="text-xs font-semibold uppercase text-muted-foreground flex items-center gap-1"
+            >
+              <CalendarIcon className="w-3 h-3" /> Select Year
+            </Label>
+            <Select
+              value={selectedYear.toString()}
+              onValueChange={(val) => setSelectedYear(Number.parseInt(val))}
+            >
+              <SelectTrigger
+                id="year-select"
+                className="bg-background border-primary/20"
+              >
+                <SelectValue placeholder="Year" />
+              </SelectTrigger>
+              <SelectContent>
+                {years.map((y) => (
+                  <SelectItem key={y} value={y.toString()}>
+                    {y}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            variant="outline"
+            className="gap-2 border-primary/20 hover:bg-primary/10 transition-colors"
+            onClick={handleReset}
+          >
+            <RefreshCcw className="w-4 h-4" /> Reset
+          </Button>
+          {loading && data.length > 0 && (
+            <div className="flex items-center gap-2 text-sm text-primary animate-pulse ml-auto">
+              <Loader2 className="w-4 h-4 animate-spin" /> Updating...
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {data.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center p-12 text-center">
@@ -216,7 +332,7 @@ export default function UsageOverview() {
                                 className="flex justify-between text-[10px]"
                               >
                                 <span className="capitalize">
-                                  {tool.replace(/_/g, " ")}:
+                                  {tool.replaceAll("_", " ")}:
                                 </span>
                                 <span>{stats.tokens.toLocaleString()}</span>
                               </p>
@@ -231,7 +347,7 @@ export default function UsageOverview() {
                       animate={{
                         height: `${Math.max((day.totalTokens / maxTokens) * 100, 2)}%`,
                       }}
-                      className="w-full max-w-[32px] bg-blue-500/40 hover:bg-blue-500 transition-all rounded-t-sm shadow-[0_-2px_10px_rgba(59,130,246,0.2)] border-x border-t border-blue-500/20"
+                      className="w-full max-w-8 bg-blue-500/40 hover:bg-blue-500 transition-all rounded-t-sm shadow-[0_-2px_10px_rgba(59,130,246,0.2)] border-x border-t border-blue-500/20"
                     />
                     <span className="text-[9px] text-muted-foreground mt-2 rotate-45 origin-left truncate w-4">
                       {day.date.split("-")[2]}
@@ -275,7 +391,7 @@ export default function UsageOverview() {
                       animate={{
                         height: `${(day.totalFail / maxAttempts) * 100}%`,
                       }}
-                      className="w-full max-w-[32px] bg-rose-500/50 hover:bg-rose-500 transition-colors rounded-t-sm"
+                      className="w-full max-w-8 bg-rose-500/50 hover:bg-rose-500 transition-colors rounded-t-sm"
                     />
                     {/* Success Bar (Green) */}
                     <motion.div
@@ -283,7 +399,7 @@ export default function UsageOverview() {
                       animate={{
                         height: `${(day.totalSuccess / maxAttempts) * 100}%`,
                       }}
-                      className="w-full max-w-[32px] bg-emerald-500/50 hover:bg-emerald-500 transition-colors rounded-t-sm"
+                      className="w-full max-w-8 bg-emerald-500/50 hover:bg-emerald-500 transition-colors rounded-t-sm"
                     />
                   </div>
                 ))}

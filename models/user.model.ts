@@ -16,12 +16,12 @@ export interface IUser {
 
 const userSchema = new Schema<IUser>(
   {
-    email: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true, index: true },
     password: { type: String },
-    name: { type: String },
+    name: { type: String, index: true },
     image: { type: String },
     emailVerified: { type: Boolean, default: false },
-    phonenumber: { type: String },
+    phonenumber: { type: String, index: true },
     isAdmin: { type: Boolean, default: false },
   },
   {

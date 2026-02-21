@@ -10,13 +10,32 @@ export async function GET(req: NextRequest) {
   if (!session)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const { searchParams } = new URL(req.url);
+  const projectId = searchParams.get("projectId");
+  const page = Number.parseInt(searchParams.get("page") || "1");
+  const limit = Number.parseInt(searchParams.get("limit") || "50");
+  const showRead = searchParams.get("showRead") === "true";
+
+  const skip = (page - 1) * limit;
+
   await connectToDatabase();
-  const notifications = await Notification.find({
+
+  const query: any = {
     $or: [{ userId: session.user.id }, { email: session.user.email }],
-    read: false, // Typically pending notifications are unread
-  })
-    .sort({ createdAt: -1 })
-    .limit(100);
+  };
+
+  if (!showRead) {
+    query.read = false;
+  }
+
+  if (projectId) {
+    query["data.projectId"] = projectId;
+  }
+
+  const [notifications, total] = await Promise.all([
+    Notification.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
+    Notification.countDocuments(query),
+  ]);
 
   // Extract mentions to enrich
   const userIds = new Set<string>();
@@ -64,7 +83,15 @@ export async function GET(req: NextRequest) {
     })
     .filter(Boolean);
 
-  return NextResponse.json({ notifications: enriched });
+  return NextResponse.json({
+    notifications: enriched,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  });
 }
 
 export async function PATCH(req: NextRequest) {
@@ -96,6 +123,8 @@ export async function PATCH(req: NextRequest) {
 
   try {
     await n.save();
-  } catch (e) {}
+  } catch {
+    // Silence error
+  }
   return NextResponse.json({ success: true });
 }

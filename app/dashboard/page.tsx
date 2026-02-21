@@ -2,24 +2,26 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
   DialogFooter,
   DialogClose,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   // Loader2 replaced by InlineLoader
   History as HistoryIcon,
@@ -29,7 +31,6 @@ import {
   FileType,
   Calendar,
   ArrowRight,
-  X,
   ImageIcon,
   Scissors,
   Eraser,
@@ -37,7 +38,7 @@ import {
   Briefcase,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { InlineLoader } from "@/components/InlineLoader";
+import { SpinnerLoader } from "@/components/SpinnerLoader";
 import { CldImage } from "next-cloudinary";
 
 interface HistoryItem {
@@ -52,12 +53,28 @@ interface HistoryItem {
 export default function Dashboard() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedTool, setSelectedTool] = useState("All");
+  const limit = 12;
 
   useEffect(() => {
     const fetchHistory = async () => {
+      setLoading(true);
       try {
-        const { data } = await axios.get("/api/history");
-        setHistory(data);
+        const { data } = await axios.get("/api/history", {
+          params: {
+            page,
+            limit,
+            search: searchTerm,
+            tool: selectedTool,
+          },
+        });
+        setHistory(data.items);
+        setTotalPages(data.totalPages);
+        setTotalCount(data.totalCount);
       } catch (error) {
         console.error("Failed to fetch history", error);
       } finally {
@@ -65,8 +82,12 @@ export default function Dashboard() {
       }
     };
 
-    fetchHistory();
-  }, []);
+    const debounceTimer = setTimeout(() => {
+      fetchHistory();
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [page, searchTerm, selectedTool]);
 
   const getIcon = (tool: string) => {
     switch (tool) {
@@ -97,8 +118,14 @@ export default function Dashboard() {
     const input = item.input;
     if (!input) return null;
 
+    const getLabel = () => {
+      if (input.prompt) return "Prompt";
+      if (input.context) return "Context";
+      if (input.jobDescription) return "Job Description";
+      return "Input Text";
+    };
+
     return (
-      
       <div className="space-y-3">
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <span className="h-px w-4 bg-muted-foreground/50"></span>
@@ -131,13 +158,7 @@ export default function Dashboard() {
             input.jobDescription) && (
             <div className="col-span-1 md:col-span-2 flex flex-col space-y-1 mt-1">
               <span className="text-xs font-medium text-muted-foreground uppercase">
-                {input.prompt
-                  ? "Prompt"
-                  : input.context
-                    ? "Context"
-                    : input.jobDescription
-                      ? "Job Description"
-                      : "Input Text"}
+                {getLabel()}
               </span>
               <div className="text-sm bg-background p-3 rounded-md border whitespace-pre-wrap max-h-40 overflow-y-auto shadow-sm">
                 {input.text ||
@@ -332,94 +353,167 @@ export default function Dashboard() {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <InlineLoader className="h-8 w-8" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8 p-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
           <p className="text-muted-foreground">
             Welcome back! Here is your recent activity.
           </p>
         </div>
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+          <Input
+            placeholder="Search history..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setPage(1);
+            }}
+            className="w-full sm:w-[250px]"
+          />
+          <Select
+            value={selectedTool}
+            onValueChange={(val) => {
+              setSelectedTool(val);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="All Tools" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All Tools</SelectItem>
+              <SelectItem value="Article Writer">Article Writer</SelectItem>
+              <SelectItem value="Title Generator">Title Generator</SelectItem>
+              <SelectItem value="Text Summarizer">Text Summarizer</SelectItem>
+              <SelectItem value="Code Generator">Code Generator</SelectItem>
+              <SelectItem value="Image Generation">Image Generation</SelectItem>
+              <SelectItem value="Background Removal">
+                Background Removal
+              </SelectItem>
+              <SelectItem value="Object Removal">Object Removal</SelectItem>
+              <SelectItem value="Resume Reviewer">Resume Reviewer</SelectItem>
+              <SelectItem value="Video Repurposer">Video Repurposer</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {history.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-[400px] border-2 border-dashed rounded-lg border-muted bg-muted/10">
-          <HistoryIcon className="h-10 w-10 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium">No history yet</h3>
-          <p className="text-sm text-muted-foreground">
-            Start using the tools to see your generated content here.
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {history.map((item) => (
-            <Dialog key={item._id}>
-              <DialogTrigger asChild>
-                <Card className="cursor-pointer hover:shadow-md transition-all hover:border-primary/50 group">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      {item.tool}
-                    </CardTitle>
-                    {getIcon(item.tool)}
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-lg font-bold truncate mb-1">
-                      {item.title}
-                    </div>
-                    <div className="flex items-center text-xs text-muted-foreground">
-                      <Calendar className="mr-1 h-3 w-3" />
-                      {new Date(item.createdAt).toLocaleDateString()}
-                    </div>
-                    <div className="mt-4 flex items-center text-sm text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                      View Details <ArrowRight className="ml-1 h-4 w-4" />
-                    </div>
-                  </CardContent>
-                </Card>
-              </DialogTrigger>
-              <DialogContent className="max-w-5xl w-full h-[90vh] flex flex-col p-0 gap-0">
-                <DialogHeader className="p-6 border-b shrink-0">
-                  <DialogTitle className="flex items-center gap-2 text-xl">
-                    {getIcon(item.tool)}
-                    {item.title}
-                  </DialogTitle>
-                  <DialogDescription>
-                    Generated on {new Date(item.createdAt).toLocaleString()}{" "}
-                    using {item.tool}
-                  </DialogDescription>
-                </DialogHeader>
+      <div className="relative min-h-[400px]">
+        {loading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50 backdrop-blur-[1px] rounded-lg transition-all duration-300">
+            <SpinnerLoader variant="neon" size="md" text="Fetching data..." />
+          </div>
+        )}
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-muted/10">
-                  {renderInput(item)}
-                  {renderOutput(item)}
+        {!loading && history.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-[400px] border-2 border-dashed rounded-lg border-muted bg-muted/10">
+            <HistoryIcon className="h-10 w-10 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium">No history yet</h3>
+            <p className="text-sm text-muted-foreground">
+              {searchTerm || selectedTool !== "All"
+                ? "Try adjusting your filters to find what you're looking for."
+                : "Start using the tools to see your generated content here."}
+            </p>
+          </div>
+        )}
+
+        {history.length > 0 && (
+          <div
+            className={`flex flex-col gap-6 transition-opacity duration-300 ${loading ? "opacity-50" : "opacity-100"}`}
+          >
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {history.map((item) => (
+                <Dialog key={item._id}>
+                  <DialogTrigger asChild>
+                    <Card className="cursor-pointer hover:shadow-md transition-all hover:border-primary/50 group">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">
+                          {item.tool}
+                        </CardTitle>
+                        {getIcon(item.tool)}
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-lg font-bold truncate mb-1">
+                          {item.title}
+                        </div>
+                        <div className="flex items-center text-xs text-muted-foreground">
+                          <Calendar className="mr-1 h-3 w-3" />
+                          {new Date(item.createdAt).toLocaleDateString()}
+                        </div>
+                        <div className="mt-4 flex items-center text-sm text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                          View Details <ArrowRight className="ml-1 h-4 w-4" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-5xl w-full h-[90vh] flex flex-col p-0 gap-0">
+                    <DialogHeader className="p-6 border-b shrink-0">
+                      <DialogTitle className="flex items-center gap-2 text-xl">
+                        {getIcon(item.tool)}
+                        {item.title}
+                      </DialogTitle>
+                      <DialogDescription>
+                        Generated on {new Date(item.createdAt).toLocaleString()}{" "}
+                        using {item.tool}
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-muted/10">
+                      {renderInput(item)}
+                      {renderOutput(item)}
+                    </div>
+
+                    <DialogFooter className="p-4 border-t bg-muted/20 shrink-0 sm:justify-between items-center">
+                      <div className="text-xs text-muted-foreground hidden sm:block">
+                        ID: {item._id}
+                      </div>
+                      <DialogClose asChild>
+                        <Button
+                          size="lg"
+                          className="w-full sm:w-auto min-w-[150px]"
+                        >
+                          Close
+                        </Button>
+                      </DialogClose>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between border-t pt-4">
+                <div className="text-sm text-muted-foreground">
+                  Showing {history.length} of {totalCount} results
                 </div>
-
-                <DialogFooter className="p-4 border-t bg-muted/20 shrink-0 sm:justify-between items-center">
-                  <div className="text-xs text-muted-foreground hidden sm:block">
-                    ID: {item._id}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1 || loading}
+                  >
+                    Previous
+                  </Button>
+                  <div className="text-sm font-medium">
+                    Page {page} of {totalPages}
                   </div>
-                  <DialogClose asChild>
-                    <Button
-                      size="lg"
-                      className="w-full sm:w-auto min-w-[150px]"
-                    >
-                      Close
-                    </Button>
-                  </DialogClose>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          ))}
-        </div>
-      )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages || loading}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -47,6 +47,10 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const projectId = searchParams.get("projectId");
+    const page = Number.parseInt(searchParams.get("page") || "1");
+    const limit = Number.parseInt(searchParams.get("limit") || "12");
+    const tool = searchParams.get("tool");
+    const search = searchParams.get("search");
 
     await connectToDatabase();
 
@@ -54,10 +58,26 @@ export async function GET(req: Request) {
     if (projectId) {
       query.projectId = projectId;
     }
+    if (tool && tool !== "All") {
+      query.tool = tool;
+    }
+    if (search) {
+      query.title = { $regex: search, $options: "i" };
+    }
 
-    const history = await History.find(query).sort({ createdAt: -1 }).limit(50);
+    const skip = (page - 1) * limit;
 
-    return NextResponse.json(history);
+    const [history, totalCount] = await Promise.all([
+      History.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      History.countDocuments(query),
+    ]);
+
+    return NextResponse.json({
+      items: history,
+      totalCount,
+      totalPages: Math.ceil(totalCount / limit),
+      currentPage: page,
+    });
   } catch (error) {
     console.error("[HISTORY_GET]", error);
     return new NextResponse("Internal Error", { status: 500 });

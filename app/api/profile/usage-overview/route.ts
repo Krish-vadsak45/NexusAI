@@ -16,17 +16,17 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const month = parseInt(
+    const month = Number.parseInt(
       searchParams.get("month") || new Date().getUTCMonth().toString(),
     );
-    const year = parseInt(
+    const year = Number.parseInt(
       searchParams.get("year") || new Date().getUTCFullYear().toString(),
     );
 
     await connectToDatabase();
 
     const startDate = new Date(Date.UTC(year, month, 1));
-    const endDate = new Date(Date.UTC(year, month + 1, 0, 23, 59, 59));
+    const endDate = new Date(Date.UTC(year, month + 1, 0, 23, 59, 59, 999));
 
     // DEBUG: Log the query parameters
     console.log("USAGE QUERY:", {
@@ -38,6 +38,7 @@ export async function GET(req: Request) {
     const usageData = await DailyUsage.aggregate([
       {
         $match: {
+          userId: new mongoose.Types.ObjectId(session.user.id),
           date: { $gte: startDate, $lte: endDate },
         },
       },
@@ -46,20 +47,11 @@ export async function GET(req: Request) {
           _id: {
             date: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
             feature: "$feature",
-            userId: "$userId",
           },
           tokens: { $sum: "$tokens" },
           count: { $sum: "$count" },
           success: { $sum: "$success" },
           fail: { $sum: "$fail" },
-        },
-      },
-      {
-        $match: {
-          $or: [
-            { "_id.userId": session.user.id },
-            { "_id.userId": new mongoose.Types.ObjectId(session.user.id) },
-          ],
         },
       },
       {
@@ -96,14 +88,20 @@ export async function GET(req: Request) {
       return acc;
     }, {});
 
+    const totals = Object.values(formattedData).reduce(
+      (acc: any, day: any) => {
+        acc.totalTokens += day.totalTokens;
+        acc.totalAttempts += day.totalAttempts;
+        acc.totalSuccess += day.totalSuccess;
+        acc.totalFail += day.totalFail;
+        return acc;
+      },
+      { totalTokens: 0, totalAttempts: 0, totalSuccess: 0, totalFail: 0 },
+    );
+
     return NextResponse.json({
       overview: Object.values(formattedData),
-      summary: {
-        totalTokens: usageData.reduce((sum, item) => sum + item.tokens, 0),
-        totalAttempts: usageData.reduce((sum, item) => sum + item.count, 0),
-        totalSuccess: usageData.reduce((sum, item) => sum + item.success, 0),
-        totalFail: usageData.reduce((sum, item) => sum + item.fail, 0),
-      },
+      summary: totals,
     });
   } catch (error) {
     console.error("Usage Overview Error:", error);
