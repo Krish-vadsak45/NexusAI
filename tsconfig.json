@@ -36,8 +36,10 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts",
     ".next\\dev/types/**/*.ts",
-    ".next\\dev/types/**/*.ts"
-, "app/api/auth/[...auth]"  ],
+    ".next\\dev/types/**/*.ts",
+    "app/api/auth/[...auth]",
+    "pdf-parse-fork.d.ts"
+  ],
   "exclude": [
     "node_modules"
   ]

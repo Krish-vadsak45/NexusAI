@@ -50,10 +50,13 @@ export async function POST(req: Request) {
     // Try LangChain for PDFs first if fileType matches or is unknown
     if (!fileType || fileType === "application/pdf") {
       try {
-        // resumeText = await fetchAndExtractPdfText(fileUrl);
-        logger.info({ resumeText }, "langchain extraction result");
+        resumeText = await fetchAndExtractPdfText(fileUrl);
+        logger.info(
+          { resumeTextLength: resumeText.length },
+          "PDF extraction result",
+        );
       } catch (error) {
-        logger.error({ err: error }, "LangChain PDF extraction failed");
+        logger.error({ err: error }, "PDF extraction failed");
       }
     }
 

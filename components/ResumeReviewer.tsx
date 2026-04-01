@@ -25,7 +25,7 @@ import {
 import { toast } from "sonner";
 import { InlineLoader } from "./InlineLoader";
 import axios from "axios";
-import { useUploadThing } from "@/lib/uploadthing";
+import { UploadButton, useUploadThing } from "@/lib/uploadthing";
 import { ProjectSelector } from "@/components/ProjectSelector";
 
 interface AnalysisResult {
@@ -42,24 +42,37 @@ export function ResumeReviewer() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState("");
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [uploadedUrl, setUploadedUrl] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { startUpload } = useUploadThing("pdfUploader", {
+    onClientUploadComplete: (res) => {
+      if (res?.[0]) {
+        setUploadedUrl(res[0].ufsUrl);
+        toast.success("Resume uploaded successfully!");
+      }
+    },
+    onUploadError: (error) => {
+      toast.error(`Upload failed: ${error.message}`);
+    },
+  });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     validateAndSetFile(file);
   };
 
-  const { startUpload, routeConfig } = useUploadThing("pdfUploader", {
-    onClientUploadComplete: () => {
-      toast.success("uploaded successfully!");
-    },
-    onUploadError: () => {
-      toast.error("error occurred while uploading");
-    },
-    // onUploadBegin: ({ file }) => {
-    //   toast.info("upload has begun for", file);
-    // },
-  });
+  // const { startUpload, routeConfig } = useUploadThing("pdfUploader", {
+  //   onClientUploadComplete: () => {
+  //     toast.success("uploaded successfully!");
+  //   },
+  //   onUploadError: () => {
+  //     toast.error("error occurred while uploading");
+  //   },
+  //   // onUploadBegin: ({ file }) => {
+  //   //   toast.info("upload has begun for", file);
+  //   // },
+  // });
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -93,38 +106,49 @@ export function ResumeReviewer() {
       toast.error("Please select a project to continue");
       return;
     }
-    if (!selectedFile) return;
+
+    // Check if we have an uploaded URL (from UploadThing) OR a local file to upload
+    if (!uploadedUrl && !selectedFile) {
+      toast.error("Please upload a resume first");
+      return;
+    }
 
     setIsLoading(true);
     setAnalysis(null);
 
     try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      if (jobDescription) {
-        formData.append("jobDescription", jobDescription);
+      let finalUrl = uploadedUrl;
+
+      // Logic: If user selected a file via the standard file input but didn't use the UploadButton,
+      // we need to upload it now.
+      if (!finalUrl && selectedFile) {
+        toast.info("Uploading resume...");
+
+        const uploadRes = await startUpload([selectedFile]);
+
+        if (!uploadRes || uploadRes.length === 0) {
+          throw new Error("Failed to upload resume to server.");
+        }
+
+        finalUrl = uploadRes[0].ufsUrl;
+        setUploadedUrl(finalUrl);
       }
-      const resp = await startUpload([selectedFile]);
 
-      if (!resp || resp.length === 0) {
-        throw new Error("Failed to upload resume");
-      }
-
-      const fileUrl = resp[0].url;
-
+      console.log("Analyzing resume with URL:", finalUrl);
       const response = await axios.post("/api/ai/ResumeReviewer", {
-        fileUrl,
+        fileUrl: finalUrl,
+        fileName: selectedFile?.name || "resume.pdf",
         jobDescription,
-        fileType: selectedFile.type,
+        fileType: selectedFile?.type || "application/pdf",
       });
 
       setAnalysis(response.data);
 
       await axios.post("/api/history", {
         tool: "Resume Reviewer",
-        title: `Resume Analysis: ${selectedFile.name}`,
+        title: `Resume Analysis: ${selectedFile?.name || "Resume"}`,
         input: {
-          fileName: selectedFile.name,
+          fileName: selectedFile?.name || "Resume",
           jobDescription: jobDescription.substring(0, 100) + "...",
         },
         output: response.data,
@@ -227,6 +251,29 @@ export function ResumeReviewer() {
                     <p className="text-sm text-muted-foreground">
                       PDF, DOCX, TXT (Max 5MB)
                     </p>
+                  </div>
+                  <div className="mt-4" onClick={(e) => e.stopPropagation()}>
+                    <UploadButton
+                      endpoint="pdfUploader"
+                      onClientUploadComplete={(res) => {
+                        console.log("Files: ", res);
+                        toast.success("Upload Completed");
+                        if (res?.[0]) {
+                          setUploadedUrl(res[0].url);
+                          // Create a dummy file object to show the UI
+                          const dummyFile = new File([], res[0].name, {
+                            type: "application/pdf",
+                          });
+                          setSelectedFile(dummyFile);
+                          toast.info(
+                            "Resume received. Click Analyze to proceed.",
+                          );
+                        }
+                      }}
+                      onUploadError={(error: Error) => {
+                        toast.error(`ERROR! ${error.message}`);
+                      }}
+                    />
                   </div>
                 </div>
               )}

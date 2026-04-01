@@ -1,33 +1,36 @@
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { createUploadthing, type FileRouter } from "uploadthing/next";
-import logger from "@/lib/logger";
 
 const f = createUploadthing();
 
 export const ourFileRouter = {
-  // Define as many FileRoutes as you like, each with a unique routeSlug
   pdfUploader: f({
     pdf: {
       maxFileSize: "4MB",
       maxFileCount: 1,
     },
   })
-    .middleware(async (req) => {
-      // This code runs on your server before upload
-      // You can add auth checks here
-      const session = await auth.api.getSession({
-        headers: await headers(),
-      });
-      if (!session) {
-        throw new Error("Unauthorized");
+    .middleware(async ({ req }) => {
+      console.log("Uploadthing middleware triggered");
+      try {
+        const session = await auth.api.getSession({
+          headers: await headers(),
+        });
+        console.log("Session in uploadthing:", !!session);
+        if (!session) {
+          throw new Error("Unauthorized");
+        }
+        return { userId: session.user.id };
+      } catch (err) {
+        console.error("Uploadthing middleware error:", err);
+        throw err;
       }
-      return { userId: session.user.id };
     })
     .onUploadComplete(async ({ metadata, file }) => {
-      // This code runs on your server after upload
-      logger.info({ userId: metadata.userId, file }, "Upload complete");
-      return { userId: metadata.userId };
+      console.log("Upload complete for userId:", metadata.userId);
+      console.log("file url", file.ufsUrl);
+      return { uploadedBy: metadata.userId };
     }),
 } satisfies FileRouter;
 
