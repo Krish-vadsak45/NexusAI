@@ -112,6 +112,12 @@ export async function checkUsage(userId: string, feature: FeatureName) {
     }
   }
 
+  // 4. Get Current Limit & Usage
+  const limitKey = FEATURE_LIMIT_MAP[feature].limit as keyof typeof plan.limits;
+  const usageKey = FEATURE_LIMIT_MAP[feature].usage as keyof typeof usage;
+  const limit = plan.limits[limitKey];
+  const currentUsage = (usage[usageKey] as number) || 0;
+
   // 6. Check Feature Limits (Memory Check is unreliable for race conditions, but good for fast fail)
   if (currentUsage >= limit) {
     return {
