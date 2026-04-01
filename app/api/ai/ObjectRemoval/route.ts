@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     if (!usageCheck.allowed) {
       return NextResponse.json(
         { error: usageCheck.message },
-        { status: 403 } // Forbidden
+        { status: 403 }, // Forbidden
       );
     }
 
@@ -51,9 +51,12 @@ export async function POST(req: Request) {
     // Check file size (max 5MB)
     const MAX_FILE_SIZE = 5 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
-       await revertFeatureUsage(userId, "object_removal");
-       await recordUsageResult(userId, "object_removal", 0, "fail");
-       return NextResponse.json({ error: "File too large (max 5MB)" }, { status: 413 });
+      await revertFeatureUsage(userId, "object_removal");
+      await recordUsageResult(userId, "object_removal", 0, "fail");
+      return NextResponse.json(
+        { error: "File too large (max 5MB)" },
+        { status: 413 },
+      );
     }
 
     // 4. Upload to Cloudinary
@@ -62,8 +65,15 @@ export async function POST(req: Request) {
 
     const uploadResult: any = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          Record Usage Success
+        { folder: "object-removal" },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        },
+      );
+      uploadStream.end(buffer);
+    });
+
     // We increment the feature count (handled inside checkAndIncrementUsage) and add token cost
     await recordUsageResult(userId, "object_removal", 5000, "success");
 
@@ -77,22 +87,12 @@ export async function POST(req: Request) {
   } catch (error: any) {
     logger.error({ err: error }, "Object Removal Error");
     if (session?.user?.id) {
-       await revertFeatureUsage(session.user.id, "object_removal");
-       await recordUsageResult(session.user.id, "object_removal", 0, "fail");
-    } 5000);
-
-    return NextResponse.json({
-      publicId: uploadResult.public_id,
-      url: uploadResult.secure_url,
-      width: uploadResult.width,
-      height: uploadResult.height,
-      format: uploadResult.format,
-    });
-  } catch (error: any) {
-    logger.error({ err: error }, "Object Removal Error");
+      await revertFeatureUsage(session.user.id, "object_removal");
+      await recordUsageResult(session.user.id, "object_removal", 0, "fail");
+    }
     return NextResponse.json(
       { error: error.message || "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
