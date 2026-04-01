@@ -262,7 +262,7 @@ export async function getAdminUsers(options: {
     User.find(filter).sort({ _id: -1 }).limit(limit).lean<IUser[]>(),
   ]);
 
-  const nextCursor = users.at(-1)?._id || null;
+  const nextCursor = (users.at(-1)?._id as any)?.toString() || null;
 
   const userIds = users
     .map((user) => user._id)
