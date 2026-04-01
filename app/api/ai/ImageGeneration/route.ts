@@ -1,12 +1,18 @@
 import { auth } from "@/lib/auth";
-import { checkUsage, incrementUsage } from "@/middleware/usage";
+import {
+  checkAndIncrementUsage,
+  revertFeatureUsage,
+  recordUsageResult,
+} from "@/middleware/usage";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import logger from "@/lib/logger";
 
 export async function POST(req: Request) {
+  let session;
   try {
     // 1. Authentication Check
-    const session = await auth.api.getSession({
+    session = await auth.api.getSession({
       headers: await headers(),
     });
 
@@ -17,9 +23,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Usage Check
+    // 2. Usage Check (Atomic)
     const userId = session.user.id;
-    const usageCheck = await checkUsage(userId, "image_generation");
+    const usageCheck = await checkAndIncrementUsage(userId, "image_generation");
     if (!usageCheck.allowed) {
       return NextResponse.json({ error: usageCheck.message }, { status: 403 });
     }
@@ -46,9 +52,11 @@ export async function POST(req: Request) {
     let width = 1024;
     let height = 1024;
     if (size && typeof size === "string" && size.includes("x")) {
-      const [w, h] = size.split("x").map(Number);
-      if (!isNaN(w)) width = w;
-      if (!isNaN(h)) height = h;
+      const parts = size.split("x");
+      const w = Number(parts[0]);
+      const h = Number(parts[1]);
+      if (!Number.isNaN(w)) width = w;
+      if (!Number.isNaN(h)) height = h;
     }
 
     const encodedPrompt = encodeURIComponent(finalPrompt);
@@ -57,24 +65,25 @@ export async function POST(req: Request) {
     // Pollinations.ai URL structure
     const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true`;
 
-    // 6. Increment Usage
+    // 6. Record Usage Success
     // Pollinations is free, so we assign a lower token cost (e.g., 500)
     // just to track activity against the monthly limit.
-    await incrementUsage(userId, "image_generation", 500, "success");
+    await recordUsageResult(userId, "image_generation", 500, "success");
 
     return NextResponse.json({
       url: imageUrl,
       prompt: finalPrompt,
     });
   } catch (error) {
-    console.error("Image Generation Error:", error);
+    logger.error({ err: error }, "Image Generation Error");
 
-    // Get session again if it was successful before the error
+    // Revert Usage on Error
     const session = await auth.api.getSession({
       headers: await headers(),
     });
     if (session?.user?.id) {
-      await incrementUsage(session.user.id, "image_generation", 0, "fail");
+      await revertFeatureUsage(session.user.id, "image_generation");
+      await recordUsageResult(session.user.id, "image_generation", 0, "fail");
     }
 
     return NextResponse.json(

@@ -112,19 +112,15 @@ export async function checkUsage(userId: string, feature: FeatureName) {
     }
   }
 
-  const limitKey = FEATURE_LIMIT_MAP[feature].limit;
-  const usageKey = FEATURE_LIMIT_MAP[feature].usage;
-  const currentUsage = (usage[usageKey] as number) || 0;
-  const limit = plan.limits[limitKey];
-
+  // 6. Check Feature Limits (Memory Check is unreliable for race conditions, but good for fast fail)
   if (currentUsage >= limit) {
     return {
       allowed: false,
-      message: `Daily limit reached for ${feature}. Limit: ${limit}/day. Please upgrade your plan.`,
+      message: `Daily limit reached for ${feature}. Limit: ${limit}/day. Please upgrade.`,
     };
   }
 
-  // 5. Check Token Limits (Monthly)
+  // 7. Check Token Limits (Monthly)
   if (usage.tokensUsed >= plan.limits.tokensPerMonth) {
     return {
       allowed: false,
@@ -133,6 +129,190 @@ export async function checkUsage(userId: string, feature: FeatureName) {
   }
 
   return { allowed: true };
+}
+
+/**
+ * Atomically checks if usage is within limits and increments if allowed.
+ * Returns true if increment succeeded, false if limit reached.
+ * @returns { allowed: boolean, message?: string }
+ */
+export async function checkAndIncrementUsage(
+  userId: string,
+  feature: FeatureName,
+) {
+  await connectToDatabase();
+
+  // 1. Get User's Plan
+  const subscription = await Subscription.findOne({ user: userId });
+  const planId = subscription?.planId || "free";
+  const planKey = planId.toUpperCase() as keyof typeof PLANS;
+  const plan = PLANS[planKey];
+
+  if (!plan) return { allowed: false, message: "Invalid plan" };
+  if (!plan.features[feature]) {
+    return {
+      allowed: false,
+      message: `Feature not available on ${plan.name} plan.`,
+    };
+  }
+
+  // 2. Ensure Usage Record Exists & Resets are Applied
+  const now = new Date();
+  const startOfToday = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
+
+  let usage = await Usage.findOne({ userId });
+
+  if (!usage) {
+    usage = await Usage.create({ userId, date: startOfToday });
+  } else {
+    // Check Day Reset
+    const usageDate = new Date(usage.date);
+    const startOfUsageDate = new Date(
+      Date.UTC(
+        usageDate.getUTCFullYear(),
+        usageDate.getUTCMonth(),
+        usageDate.getUTCDate(),
+      ),
+    );
+
+    if (startOfToday > startOfUsageDate) {
+      usage = await Usage.findOneAndUpdate(
+        { userId },
+        {
+          $set: {
+            date: startOfToday,
+            articlesGenerated: 0,
+            titlesGenerated: 0,
+            imagesGenerated: 0,
+            backgroundRemovals: 0,
+            objectRemovals: 0,
+            resumeReviews: 0,
+            textSummaries: 0,
+            codeGenerations: 0,
+            videoRepurpose: 0,
+          },
+        },
+        { new: true },
+      );
+    }
+
+    // Check Token Reset
+    const lastTokenReset = new Date(usage.lastTokenReset);
+    const oneMonthAgo = new Date(now);
+    oneMonthAgo.setMonth(now.getMonth() - 1);
+
+    if (lastTokenReset < oneMonthAgo) {
+      usage = await Usage.findOneAndUpdate(
+        { userId },
+        {
+          $set: { tokensUsed: 0, lastTokenReset: now },
+        },
+        { new: true },
+      );
+    }
+  }
+
+  // 3. Token Check (Soft check, not atomic but tokens aren't strict race critical usually)
+  if (usage.tokensUsed >= plan.limits.tokensPerMonth) {
+    return { allowed: false, message: "Monthly token limit reached." };
+  }
+
+  // 4. Atomic Increment with Limit Check
+  const limitKey = FEATURE_LIMIT_MAP[feature].limit;
+  const usageKey = FEATURE_LIMIT_MAP[feature].usage;
+  const limit = plan.limits[limitKey];
+
+  // Atomic update: only increment if current usage < limit
+  // $lt check works on the existing document value
+  const result = await Usage.findOneAndUpdate(
+    {
+      userId,
+      [usageKey]: { $lt: limit },
+    },
+    { $inc: { [usageKey]: 1 } },
+    { new: true },
+  );
+
+  if (!result) {
+    // If update returned null (and we know user exists), it means condition failed
+    // Double check if user exists or limit reached (likely limit reached)
+    return {
+      allowed: false,
+      message: `Daily limit reached for ${feature}. Limit: ${limit}/day.`,
+    };
+  }
+
+  // 5. Update History (As 'pending' or 'attempt')
+  // We increment count. Success/Fail handling can happen later or we assume success.
+  await DailyUsage.findOneAndUpdate(
+    { userId, date: startOfToday, feature },
+    { $inc: { count: 1 } },
+    { upsert: true },
+  );
+
+  return { allowed: true };
+}
+
+/**
+ * Reverts the usage increment (used when generation fails).
+ */
+export async function revertFeatureUsage(userId: string, feature: FeatureName) {
+  await connectToDatabase();
+  const usageKey = FEATURE_LIMIT_MAP[feature].usage;
+
+  // Decrement current usage
+  await Usage.findOneAndUpdate({ userId }, { $inc: { [usageKey]: -1 } });
+
+  // Decrement daily history count
+  const now = new Date();
+  const startOfToday = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
+
+  await DailyUsage.findOneAndUpdate(
+    { userId, date: startOfToday, feature },
+    { $inc: { count: -1 } },
+  );
+}
+
+/**
+ * Records token usage and success/fail status.
+ */
+export async function recordUsageResult(
+  userId: string,
+  feature: FeatureName,
+  tokensUsed: number,
+  status: "success" | "fail",
+) {
+  await connectToDatabase();
+
+  // If failed, we might want to refund usage?
+  // No, the calling code should call revertFeatureUsage if it wants to refund.
+  // Here we just log the outcome and tokens.
+
+  if (tokensUsed > 0) {
+    await Usage.findOneAndUpdate(
+      { userId },
+      { $inc: { tokensUsed: tokensUsed } },
+    );
+  }
+
+  const now = new Date();
+  const startOfToday = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
+
+  const update: any = { $inc: { tokens: tokensUsed } };
+  if (status === "success") update.$inc.success = 1;
+  else if (status === "fail") update.$inc.fail = 1;
+
+  await DailyUsage.findOneAndUpdate(
+    { userId, date: startOfToday, feature },
+    update,
+    { upsert: true },
+  );
 }
 
 /**

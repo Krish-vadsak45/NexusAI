@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { checkUsage, incrementUsage } from "@/middleware/usage";
+import {
+  checkAndIncrementUsage,
+  revertFeatureUsage,
+  recordUsageResult,
+} from "@/middleware/usage";
 import { v2 as cloudinary } from "cloudinary";
 import { headers } from "next/headers";
+import logger from "@/lib/logger";
 
 // Configure Cloudinary
 cloudinary.config({
@@ -12,9 +17,10 @@ cloudinary.config({
 });
 
 export async function POST(req: Request) {
+  let session;
   try {
     // 1. Authenticate User
-    const session = await auth.api.getSession({
+    session = await auth.api.getSession({
       headers: await headers(),
     });
 
@@ -22,9 +28,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2. CHECK USAGE
+    // 2. CHECK USAGE (Atomic)
     const userId = session.user.id;
-    const usageCheck = await checkUsage(userId, "object_removal");
+    const usageCheck = await checkAndIncrementUsage(userId, "object_removal");
     if (!usageCheck.allowed) {
       return NextResponse.json(
         { error: usageCheck.message },
@@ -37,7 +43,17 @@ export async function POST(req: Request) {
     const file = formData.get("image") as File;
 
     if (!file) {
+      await revertFeatureUsage(userId, "object_removal");
+      await recordUsageResult(userId, "object_removal", 0, "fail");
       return NextResponse.json({ error: "No image provided" }, { status: 400 });
+    }
+
+    // Check file size (max 5MB)
+    const MAX_FILE_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+       await revertFeatureUsage(userId, "object_removal");
+       await recordUsageResult(userId, "object_removal", 0, "fail");
+       return NextResponse.json({ error: "File too large (max 5MB)" }, { status: 413 });
     }
 
     // 4. Upload to Cloudinary
@@ -47,19 +63,9 @@ export async function POST(req: Request) {
     const uploadResult: any = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
-          folder: "object-removal",
-        },
-        (error: any, result: any) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      );
-      uploadStream.end(buffer);
-    });
-
-    // 5. Increment Usage
-    // We increment the feature count (handled inside incrementUsage) and add token cost
-    await incrementUsage(userId, "object_removal", 5000);
+          Record Usage Success
+    // We increment the feature count (handled inside checkAndIncrementUsage) and add token cost
+    await recordUsageResult(userId, "object_removal", 5000, "success");
 
     return NextResponse.json({
       publicId: uploadResult.public_id,
@@ -69,7 +75,21 @@ export async function POST(req: Request) {
       format: uploadResult.format,
     });
   } catch (error: any) {
-    console.error("Object Removal Error:", error);
+    logger.error({ err: error }, "Object Removal Error");
+    if (session?.user?.id) {
+       await revertFeatureUsage(session.user.id, "object_removal");
+       await recordUsageResult(session.user.id, "object_removal", 0, "fail");
+    } 5000);
+
+    return NextResponse.json({
+      publicId: uploadResult.public_id,
+      url: uploadResult.secure_url,
+      width: uploadResult.width,
+      height: uploadResult.height,
+      format: uploadResult.format,
+    });
+  } catch (error: any) {
+    logger.error({ err: error }, "Object Removal Error");
     return NextResponse.json(
       { error: error.message || "Internal Server Error" },
       { status: 500 }

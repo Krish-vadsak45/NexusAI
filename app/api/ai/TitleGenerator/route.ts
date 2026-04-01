@@ -1,13 +1,19 @@
 import { auth } from "@/lib/auth";
-import { checkUsage, incrementUsage } from "@/middleware/usage";
+import {
+  checkAndIncrementUsage,
+  revertFeatureUsage,
+  recordUsageResult,
+} from "@/middleware/usage";
 import axios from "axios";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import logger from "@/lib/logger";
 
 export async function POST(req: Request) {
+  let session;
   try {
     // 1. Authentication Check
-    const session = await auth.api.getSession({
+    session = await auth.api.getSession({
       headers: await headers(),
     });
 
@@ -18,9 +24,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // --- NEW: CHECK USAGE ---
+    // --- NEW: CHECK USAGE (Atomic) ---
     const userId = session.user.id;
-    const usageCheck = await checkUsage(userId, "title_generator");
+    const usageCheck = await checkAndIncrementUsage(userId, "title_generator");
     if (!usageCheck.allowed) {
       return NextResponse.json(
         { error: usageCheck.message },
@@ -99,8 +105,9 @@ export async function POST(req: Request) {
     const data = await response.data;
 
     if (response.status < 200 || response.status >= 300) {
-      console.error("Gemini API Error:", data);
-      await incrementUsage(userId, "title_generator", 0, "fail");
+      logger.error({ err: data }, "Gemini API Error");
+      await revertFeatureUsage(userId, "title_generator");
+      await recordUsageResult(userId, "title_generator", 0, "fail");
       return NextResponse.json(
         { error: data.error?.message || "Failed to generate titles" },
         { status: response.status },
@@ -111,7 +118,8 @@ export async function POST(req: Request) {
     let generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!generatedText) {
-      await incrementUsage(userId, "title_generator", 0, "fail");
+      await revertFeatureUsage(userId, "title_generator");
+      await recordUsageResult(userId, "title_generator", 0, "fail");
       return NextResponse.json(
         { error: "AI generated empty content" },
         { status: 500 },
@@ -125,7 +133,8 @@ export async function POST(req: Request) {
       const parsedContent = JSON.parse(generatedText);
 
       if (!parsedContent.titles || !Array.isArray(parsedContent.titles)) {
-        await incrementUsage(userId, "title_generator", 0, "fail");
+        await revertFeatureUsage(userId, "title_generator");
+        await recordUsageResult(userId, "title_generator", 0, "fail");
         return NextResponse.json(
           { error: "Invalid response format from AI" },
           { status: 500 },
@@ -133,7 +142,7 @@ export async function POST(req: Request) {
       }
       const estimatedTokens =
         (prompt.length + (generatedText?.length || 0)) / 4;
-      await incrementUsage(
+      await recordUsageResult(
         userId,
         "title_generator",
         Math.ceil(estimatedTokens),
@@ -143,7 +152,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ titles: parsedContent.titles });
     } catch (e) {
       console.error("JSON Parse Error:", e);
-      await incrementUsage(userId, "title_generator", 0, "fail");
+      await revertFeatureUsage(userId, "title_generator");
+      await recordUsageResult(userId, "title_generator", 0, "fail");
       return NextResponse.json(
         { error: "Failed to parse AI response" },
         { status: 500 },
@@ -151,6 +161,10 @@ export async function POST(req: Request) {
     }
   } catch (error) {
     console.error("Error in title-generator API:", error);
+    if (session?.user?.id) {
+      await revertFeatureUsage(session.user.id, "title_generator");
+      await recordUsageResult(session.user.id, "title_generator", 0, "fail");
+    }
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

@@ -3,7 +3,9 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { stripe, getPlanIdFromPriceId } from "@/lib/stripe";
 import SubscriptionModel from "@/models/Subscription.model";
+import User from "@/models/user.model";
 import connectToDatabase from "@/lib/db";
+import logger from "@/lib/logger";
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -15,7 +17,7 @@ export async function POST(req: Request) {
     event = stripe.webhooks.constructEvent(
       body,
       signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
+      process.env.STRIPE_WEBHOOK_SECRET!,
     );
   } catch (error: any) {
     return new NextResponse(`Webhook Error: ${error.message}`, { status: 400 });
@@ -33,13 +35,23 @@ export async function POST(req: Request) {
         }
 
         const subscription = await stripe.subscriptions.retrieve(
-          session.subscription as string
+          session.subscription as string,
         );
 
         const userId = session.metadata?.userId;
         const planId = session.metadata?.planId;
 
         if (userId && planId) {
+          // Verify user exists before updating/creating subscription
+          const userExists = await User.exists({ _id: userId });
+          if (!userExists) {
+            logger.error(
+              { userId, planId },
+              "Webhook: User not found for subscription update",
+            );
+            break; // Skip update if user invalid
+          }
+
           const currentPeriodEnd = (subscription as any).current_period_end;
           await SubscriptionModel.findOneAndUpdate(
             { user: userId },
@@ -53,7 +65,7 @@ export async function POST(req: Request) {
                   ? new Date(currentPeriodEnd * 1000)
                   : new Date(),
             },
-            { upsert: true, new: true }
+            { upsert: true, new: true },
           );
         }
         break;
@@ -67,9 +79,8 @@ export async function POST(req: Request) {
           break;
         }
 
-        const subscription = await stripe.subscriptions.retrieve(
-          subscriptionId
-        );
+        const subscription =
+          await stripe.subscriptions.retrieve(subscriptionId);
 
         const currentPeriodEnd = (subscription as any).current_period_end;
 
@@ -81,7 +92,7 @@ export async function POST(req: Request) {
               typeof currentPeriodEnd === "number"
                 ? new Date(currentPeriodEnd * 1000)
                 : new Date(),
-          }
+          },
         );
         break;
       }
@@ -102,7 +113,7 @@ export async function POST(req: Request) {
               typeof currentPeriodEnd === "number"
                 ? new Date(currentPeriodEnd * 1000)
                 : new Date(),
-          }
+          },
         );
         break;
       }
@@ -115,13 +126,13 @@ export async function POST(req: Request) {
           {
             status: "cancelled",
             planId: "free",
-          }
+          },
         );
         break;
       }
     }
   } catch (error) {
-    console.error("Error handling webhook:", error);
+    logger.error({ err: error }, "Error handling webhook");
     return new NextResponse("Webhook handler failed", { status: 500 });
   }
 

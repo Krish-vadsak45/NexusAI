@@ -53,41 +53,46 @@ interface HistoryItem {
 export default function Dashboard() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTool, setSelectedTool] = useState("All");
   const limit = 12;
 
-  useEffect(() => {
-    const fetchHistory = async () => {
-      setLoading(true);
-      try {
-        const { data } = await axios.get("/api/history", {
-          params: {
-            page,
-            limit,
-            search: searchTerm,
-            tool: selectedTool,
-          },
-        });
-        setHistory(data.items);
-        setTotalPages(data.totalPages);
-        setTotalCount(data.totalCount);
-      } catch (error) {
-        console.error("Failed to fetch history", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchHistory = async (cursor: string | null = null, reset = false) => {
+    setLoading(true);
+    try {
+      const { data } = await axios.get("/api/history", {
+        params: {
+          cursor,
+          limit,
+          search: searchTerm,
+          tool: selectedTool,
+        },
+      });
+      setHistory((prev) => (reset ? data.items : [...prev, ...data.items]));
+      setNextCursor(data.nextCursor);
+      setTotalCount(data.totalCount);
+    } catch (error) {
+      console.error("Failed to fetch history", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     const debounceTimer = setTimeout(() => {
-      fetchHistory();
+      fetchHistory(null, true);
     }, 300);
 
     return () => clearTimeout(debounceTimer);
-  }, [page, searchTerm, selectedTool]);
+  }, [searchTerm, selectedTool]);
+
+  const handleLoadMore = () => {
+    if (nextCursor) {
+      fetchHistory(nextCursor, false);
+    }
+  };
 
   const getIcon = (tool: string) => {
     switch (tool) {
@@ -368,7 +373,6 @@ export default function Dashboard() {
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
-              setPage(1);
             }}
             className="w-full sm:w-[250px]"
           />
@@ -376,7 +380,6 @@ export default function Dashboard() {
             value={selectedTool}
             onValueChange={(val) => {
               setSelectedTool(val);
-              setPage(1);
             }}
           >
             <SelectTrigger className="w-full sm:w-[180px]">
@@ -483,32 +486,11 @@ export default function Dashboard() {
               ))}
             </div>
 
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between border-t pt-4">
-                <div className="text-sm text-muted-foreground">
-                  Showing {history.length} of {totalCount} results
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1 || loading}
-                  >
-                    Previous
-                  </Button>
-                  <div className="text-sm font-medium">
-                    Page {page} of {totalPages}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages || loading}
-                  >
-                    Next
-                  </Button>
-                </div>
+            {nextCursor && (
+              <div className="flex justify-center mt-6">
+                <Button onClick={handleLoadMore} disabled={loading}>
+                  {loading ? <SpinnerLoader size="sm" /> : "Load More"}
+                </Button>
               </div>
             )}
           </div>

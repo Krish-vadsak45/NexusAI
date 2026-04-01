@@ -1,13 +1,19 @@
 import { auth } from "@/lib/auth";
-import { checkUsage, incrementUsage } from "@/middleware/usage";
+import {
+  checkAndIncrementUsage,
+  revertFeatureUsage,
+  recordUsageResult,
+} from "@/middleware/usage";
 import axios from "axios";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import logger from "@/lib/logger";
 
 export async function POST(req: Request) {
+  let session;
   try {
     // 1. Authentication Check
-    const session = await auth.api.getSession({
+    session = await auth.api.getSession({
       headers: await headers(),
     });
 
@@ -18,9 +24,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Usage Check
+    // 2. Usage Check (Atomic)
     const userId = session.user.id;
-    const usageCheck = await checkUsage(userId, "text_summarizer");
+    const usageCheck = await checkAndIncrementUsage(userId, "text_summarizer");
     if (!usageCheck.allowed) {
       return NextResponse.json({ error: usageCheck.message }, { status: 403 });
     }
@@ -84,8 +90,9 @@ export async function POST(req: Request) {
     );
 
     if (response.status !== 200) {
-      console.error("Gemini API Error:", response.data);
-      await incrementUsage(userId, "text_summarizer", 0, "fail");
+      logger.error({ err: response.data }, "Gemini API Error");
+      await revertFeatureUsage(userId, "text_summarizer");
+      await recordUsageResult(userId, "text_summarizer", 0, "fail");
       return NextResponse.json(
         { error: "Failed to generate summary" },
         { status: 500 },
@@ -93,28 +100,34 @@ export async function POST(req: Request) {
     }
 
     const generatedText =
-      response.data.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "Failed to generate summary.";
+      response.data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    // 6. Increment Usage
+    if (!generatedText) {
+      await revertFeatureUsage(userId, "text_summarizer");
+      await recordUsageResult(userId, "text_summarizer", 0, "fail");
+      return NextResponse.json(
+        { error: "Failed to generate summary" },
+        { status: 500 },
+      );
+    }
+
+    // 6. Record Success Usage
     // Estimate tokens (rough approximation: 1 token ~= 4 chars)
     const inputTokens = Math.ceil(text.length / 4);
     const outputTokens = Math.ceil(generatedText.length / 4);
     const totalTokens = inputTokens + outputTokens;
 
-    await incrementUsage(userId, "text_summarizer", totalTokens, "success");
+    await recordUsageResult(userId, "text_summarizer", totalTokens, "success");
 
     return NextResponse.json({
       summary: generatedText.trim(),
     });
   } catch (error: any) {
-    console.error("Text Summarizer Error:", error);
-    // Get session again if it was successful before the error
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
+    logger.error({ err: error }, "Text Summarizer Error");
+    // Get session again if it was successful before the error? No, we have session.
     if (session?.user?.id) {
-      await incrementUsage(session.user.id, "text_summarizer", 0, "fail");
+      await revertFeatureUsage(session.user.id, "text_summarizer");
+      await recordUsageResult(session.user.id, "text_summarizer", 0, "fail");
     }
     return NextResponse.json(
       { error: error.message || "Internal Server Error" },

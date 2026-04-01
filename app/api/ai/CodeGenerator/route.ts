@@ -1,13 +1,19 @@
 import { auth } from "@/lib/auth";
-import { checkUsage, incrementUsage } from "@/middleware/usage";
+import {
+  checkAndIncrementUsage,
+  revertFeatureUsage,
+  recordUsageResult,
+} from "@/middleware/usage";
 import axios from "axios";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import logger from "@/lib/logger";
 
 export async function POST(req: Request) {
+  let session;
   try {
     // 1. Authentication Check
-    const session = await auth.api.getSession({
+    session = await auth.api.getSession({
       headers: await headers(),
     });
 
@@ -18,9 +24,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // --- CHECK USAGE ---
+    // --- CHECK USAGE (Atomic) ---
     const userId = session.user.id;
-    const usageCheck = await checkUsage(userId, "code_generator");
+    const usageCheck = await checkAndIncrementUsage(userId, "code_generator");
     if (!usageCheck.allowed) {
       return NextResponse.json({ error: usageCheck.message }, { status: 403 });
     }
@@ -83,7 +89,7 @@ export async function POST(req: Request) {
     const data = await response.data;
 
     if (response.status < 200 || response.status >= 300) {
-      console.error("Gemini API Error:", data);
+      logger.error({ data }, "Gemini API Error");
       return NextResponse.json(
         { error: data.error?.message || "Failed to generate code" },
         { status: response.status },
@@ -106,10 +112,10 @@ export async function POST(req: Request) {
     try {
       const parsedContent = JSON.parse(generatedText);
 
-      // Increment usage
+      // Record final usage
       const estimatedTokens =
         (systemPrompt.length + (generatedText?.length || 0)) / 4;
-      await incrementUsage(
+      await recordUsageResult(
         userId,
         "code_generator",
         Math.ceil(estimatedTokens),
@@ -118,8 +124,11 @@ export async function POST(req: Request) {
 
       return NextResponse.json({ content: parsedContent });
     } catch (e) {
-      console.error("JSON Parse Error:", e);
-      await incrementUsage(userId, "code_generator", 0, "fail");
+      logger.error({ err: e, generatedText }, "JSON Parse Error");
+      // Revert usage on parse failure
+      await revertFeatureUsage(userId, "code_generator");
+      await recordUsageResult(userId, "code_generator", 0, "fail");
+
       return NextResponse.json(
         {
           error: "Failed to parse AI response.",
@@ -128,8 +137,7 @@ export async function POST(req: Request) {
       );
     }
   } catch (error) {
-    console.error("Error in code-generator API:", error);
-    // Note: We don't increment failure here because we might not have userId
+    logger.error({ err: error }, "Error in code-generator API");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

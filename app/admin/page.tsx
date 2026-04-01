@@ -25,7 +25,7 @@ export default async function AdminPage() {
 
   const [metrics, users] = await Promise.all([
     getAdminMetrics(),
-    getAdminUsers({ page: 1, limit: 20 }),
+    getAdminUsers({ limit: 20 }),
   ]);
 
   return <AdminDashboard initialMetrics={metrics} initialUsers={users} />;

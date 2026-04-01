@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { createUploadthing, type FileRouter } from "uploadthing/next";
+import logger from "@/lib/logger";
 
 const f = createUploadthing();
 
@@ -25,8 +26,7 @@ export const ourFileRouter = {
     })
     .onUploadComplete(async ({ metadata, file }) => {
       // This code runs on your server after upload
-      console.log("Upload complete for userId:", metadata.userId);
-      console.log("Files:", file);
+      logger.info({ userId: metadata.userId, file }, "Upload complete");
       return { userId: metadata.userId };
     }),
 } satisfies FileRouter;

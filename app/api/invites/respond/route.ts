@@ -6,6 +6,7 @@ import { acceptInvite } from "@/lib/invite";
 import Audit from "@/models/Audit.model";
 import Notification from "@/models/Notification.model";
 import Project from "@/models/Project.model";
+import logger from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });
@@ -62,12 +63,15 @@ export async function POST(req: NextRequest) {
           { $set: { read: true } },
         );
       } catch (e) {
-        console.warn("audit/notification update failed", e);
+        logger.warn(
+          { err: e },
+          "audit/notification update failed in invite acceptance",
+        );
       }
 
       return NextResponse.json({ success: true, ...result });
     } catch (e) {
-      console.error(e);
+      logger.error({ err: e }, "Error responding to invite (accept)");
       return NextResponse.json({ error: "failed" }, { status: 500 });
     }
   }
@@ -96,7 +100,7 @@ export async function POST(req: NextRequest) {
           { $set: { read: true } },
         );
       } catch (e) {
-        console.warn("audit update failed", e);
+        logger.warn({ err: e }, "audit update failed in invite rejection");
       }
 
       try {
@@ -111,12 +115,15 @@ export async function POST(req: NextRequest) {
           },
         });
       } catch (nerr) {
-        console.error("notification create failed", nerr);
+        logger.error(
+          { err: nerr },
+          "notification create failed during invite rejection",
+        );
       }
 
       return NextResponse.json({ success: true });
     } catch (e) {
-      console.error(e);
+      logger.error({ err: e }, "Error responding to invite (reject)");
       return NextResponse.json({ error: "failed" }, { status: 500 });
     }
   }

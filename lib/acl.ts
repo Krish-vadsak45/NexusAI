@@ -1,8 +1,13 @@
 import Project from "../models/Project.model";
+import redis from "./redisClient";
+import logger from "./logger";
 
 export type Role = "owner" | "editor" | "viewer";
 
-export function rolePriority(r: Role | string | undefined) {
+// 1. Define Cache Settings
+const ACL_CACHE_TTL = 300; // 5 minutes
+
+export function rolePriority(r: string | undefined): number {
   switch (r) {
     case "owner":
       return 3;
@@ -24,35 +29,60 @@ export async function checkProjectMembership(
   projectId: string,
   allowedRoles: Role[] = ["viewer"],
 ) {
-  if (!userId) return { allowed: false };
-  const project = await Project.findById(projectId);
+  if (!userId || !projectId) return { allowed: false };
+
+  // 2. Try Redis Cache First
+  const cacheKey = `acl:user:${userId}:proj:${projectId}`;
+  try {
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      const { project, member } = JSON.parse(cached);
+      const memberPriority = rolePriority(member?.role);
+      const minAllowedPriority = Math.min(
+        ...allowedRoles.map((role) => rolePriority(role)),
+      );
+
+      if (memberPriority >= minAllowedPriority) {
+        return { allowed: true, project, member };
+      }
+    }
+  } catch (e) {
+    logger.warn({ err: e }, "ACL Redis fetch failed");
+  }
+
+  const project = await Project.findById(projectId).lean();
   if (!project) return { allowed: false };
-  console.log(
-    "Checking membership for user",
-    userId,
-    "on project",
-    projectId,
-    "allowedRoles",
-    allowedRoles,
-    "project members:",
-    project,
-  );
-  // owner by userId (legacy 'userId' field) => owner
+
+  // Determine role
+  let member = (project as any).members?.find((m: any) => m.userId === userId);
+  let role = member?.role;
+
   if ((project as any).userId === userId) {
-    return { allowed: true, project, member: { userId, role: "owner" } };
+    role = "owner";
+    member = { userId, role: "owner" };
   }
 
-  const member = (project as any).members?.find(
-    (m: any) => m.userId === userId,
+  if (!role) return { allowed: false };
+
+  const memberPriority = rolePriority(role);
+  const minAllowedPriority = Math.min(
+    ...allowedRoles.map((r) => rolePriority(r)),
   );
-  console.log("Found member entry:", member);
-  if (!member) return { allowed: false };
 
-  const memberPriority = rolePriority(member.role);
-  const minAllowedPriority = Math.min(...allowedRoles.map(rolePriority));
-  if (memberPriority >= minAllowedPriority) {
-    return { allowed: true, project, member };
+  const result = {
+    allowed: memberPriority >= minAllowedPriority,
+    project,
+    member: member || { userId, role },
+  };
+
+  // 3. Store result in Cache for 5 minutes
+  if (result.allowed) {
+    try {
+      await redis.set(cacheKey, JSON.stringify(result), "EX", ACL_CACHE_TTL);
+    } catch (e) {
+      logger.warn({ err: e }, "ACL Redis set failed");
+    }
   }
 
-  return { allowed: false };
+  return result;
 }

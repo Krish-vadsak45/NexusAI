@@ -14,6 +14,13 @@ export async function GET(
   if (!session)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const { searchParams } = new URL(req.url);
+  const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  const limit = Math.min(
+    100,
+    Math.max(1, Number(searchParams.get("limit")) || 20),
+  );
+
   await connectToDatabase();
   const { allowed, project } = await checkProjectMembership(
     session.user.id,
@@ -22,7 +29,14 @@ export async function GET(
   );
   if (!allowed)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const rawMembers = (project as any).members || [];
+
+  const allMembers = (project as any).members || [];
+  const total = allMembers.length;
+
+  // Sort members locally by role or joinedAt if needed, or stick to existing order
+  // For now, simple pagination on the array:
+  const startIndex = (page - 1) * limit;
+  const rawMembers = allMembers.slice(startIndex, startIndex + limit);
 
   // collect user ids to resolve emails
   const idsToResolve = Array.from(
@@ -40,14 +54,8 @@ export async function GET(
     { email?: string; _id?: string; name?: string }
   > = {};
   if (idsToResolve.length > 0) {
-    // Better Auth uses 'user' collection. We query via Mongoose model updated to point there.
-    // Try to ensure we match by both string or ObjectId if needed, although Mongoose handles casting.
     const users = await User.find({
-      $or: [
-        { _id: { $in: idsToResolve } },
-        // if some IDs are stored as strings in _id field (rare but possible in some adapters)
-        { id: { $in: idsToResolve } },
-      ],
+      $or: [{ _id: { $in: idsToResolve } }, { id: { $in: idsToResolve } }],
     })
       .select("email name id")
       .lean();
@@ -57,10 +65,6 @@ export async function GET(
       acc[id] = { email: u.email, name: u.name, _id: id };
       return acc;
     }, {});
-
-    console.log(
-      `Resolved ${users.length} users from ${idsToResolve.length} IDs`,
-    );
   }
 
   const deriveName = (
@@ -93,5 +97,11 @@ export async function GET(
     };
   });
 
-  return NextResponse.json({ members: enriched });
+  return NextResponse.json({
+    members: enriched,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  });
 }

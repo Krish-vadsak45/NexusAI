@@ -7,7 +7,7 @@ import type { AdminMetrics, AdminUserRow } from "@/lib/admin-queries";
 
 type UserPayload = {
   users: AdminUserRow[];
-  page: number;
+  nextCursor?: string | null;
   limit: number;
   total: number;
 };
@@ -54,19 +54,6 @@ export default function AdminDashboard({
   const [loadingMetrics, setLoadingMetrics] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
 
-  const totalPages = useMemo(() => {
-    return Math.max(1, Math.ceil(usersPayload.total / usersPayload.limit));
-  }, [usersPayload.total, usersPayload.limit]);
-
-  const rangeStart =
-    usersPayload.total === 0
-      ? 0
-      : (usersPayload.page - 1) * usersPayload.limit + 1;
-  const rangeEnd = Math.min(
-    usersPayload.page * usersPayload.limit,
-    usersPayload.total,
-  );
-
   const tokensPerActiveUser = useMemo(() => {
     const activeUsers = Math.max(metrics.totals.activeUsers30d, 1);
     return Math.round(metrics.totals.tokensUsed / activeUsers);
@@ -104,11 +91,14 @@ export default function AdminDashboard({
     return items;
   }, [metrics.totals]);
 
-  const loadMetrics = useCallback(async () => {
+  const loadMetrics = useCallback(async (forced = false) => {
     try {
       setLoadingMetrics(true);
       setMetricsError(null);
-      const response = await axios.get("/api/admin/metrics");
+      const url = forced
+        ? "/api/admin/metrics?refresh=true"
+        : "/api/admin/metrics";
+      const response = await axios.get(url);
       setMetrics(response.data);
     } catch (error: any) {
       setMetricsError(error?.message || "Unable to refresh metrics");
@@ -118,19 +108,29 @@ export default function AdminDashboard({
   }, []);
 
   const loadUsers = useCallback(
-    async (nextPage: number, nextQuery?: string) => {
-    try {
-      setLoadingUsers(true);
-      setUsersError(null);
-      const params = new URLSearchParams({
-        page: String(nextPage),
-        limit: String(usersPayload.limit),
-      });
-      if (nextQuery) {
-        params.set("q", nextQuery);
-      }
-      const response = await axios.get(`/api/admin/users?${params.toString()}`);
-      setUsersPayload(response.data);
+    async (cursor: string | null = null, nextQuery?: string, reset = false) => {
+      try {
+        setLoadingUsers(true);
+        setUsersError(null);
+        const params = new URLSearchParams({
+          limit: String(usersPayload.limit),
+        });
+        if (cursor) {
+          params.set("cursor", cursor);
+        }
+        if (nextQuery) {
+          params.set("q", nextQuery);
+        }
+        const response = await axios.get(
+          `/api/admin/users?${params.toString()}`,
+        );
+
+        setUsersPayload((prev) => ({
+          ...response.data,
+          users: reset
+            ? response.data.users
+            : [...prev.users, ...response.data.users],
+        }));
       } catch (error: any) {
         setUsersError(error?.message || "Unable to load users");
       } finally {
@@ -142,7 +142,13 @@ export default function AdminDashboard({
 
   const handleSearch = async (event: FormEvent) => {
     event.preventDefault();
-    await loadUsers(1, query.trim());
+    await loadUsers(null, query.trim(), true);
+  };
+
+  const handleLoadMore = () => {
+    if (usersPayload.nextCursor) {
+      loadUsers(usersPayload.nextCursor, query.trim(), false);
+    }
   };
 
   return (
@@ -170,7 +176,7 @@ export default function AdminDashboard({
             <div className="flex flex-wrap items-center gap-3">
               <button
                 className="rounded-full border border-neutral-700 px-4 py-2 text-xs uppercase tracking-widest text-neutral-200 transition hover:border-neutral-500"
-                onClick={loadMetrics}
+                onClick={() => loadMetrics(true)}
                 disabled={loadingMetrics}
               >
                 {loadingMetrics ? "Refreshing..." : "Refresh metrics"}
@@ -475,30 +481,20 @@ export default function AdminDashboard({
             </table>
           </div>
 
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-400">
+          <div className="mt-6 flex flex-col items-center gap-4 text-xs text-neutral-400">
             <span>
-              Showing {rangeStart} - {rangeEnd} of{" "}
+              Showing {usersPayload.users.length} of{" "}
               {numberFormatter.format(usersPayload.total)}
             </span>
-            <div className="flex items-center gap-2">
+            {usersPayload.nextCursor && (
               <button
-                className="rounded-full border border-neutral-700 px-3 py-1 disabled:opacity-40"
-                onClick={() => loadUsers(usersPayload.page - 1, query.trim())}
-                disabled={usersPayload.page <= 1 || loadingUsers}
+                className="rounded-full border border-neutral-700 px-6 py-2 disabled:opacity-40 uppercase tracking-widest text-neutral-200 transition hover:border-neutral-500"
+                onClick={handleLoadMore}
+                disabled={loadingUsers}
               >
-                Prev
+                {loadingUsers ? "Loading..." : "Load More"}
               </button>
-              <span>
-                Page {usersPayload.page} of {totalPages}
-              </span>
-              <button
-                className="rounded-full border border-neutral-700 px-3 py-1 disabled:opacity-40"
-                onClick={() => loadUsers(usersPayload.page + 1, query.trim())}
-                disabled={usersPayload.page >= totalPages || loadingUsers}
-              >
-                Next
-              </button>
-            </div>
+            )}
           </div>
         </section>
       </section>

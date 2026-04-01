@@ -25,7 +25,13 @@ export function ProjectSelector({ value, onValueChange }: Readonly<Props>) {
 
   useEffect(() => {
     // Fetch projects on mount
-    axios.get("/api/projects").then((res) => setProjects(res.data));
+    axios.get("/api/projects").then((res) => {
+      // Ensure we set projects correctly regardless of API structure
+      const projectsData = Array.isArray(res.data)
+        ? res.data
+        : res.data?.projects || [];
+      setProjects(projectsData);
+    });
   }, []);
 
   return (
@@ -35,11 +41,12 @@ export function ProjectSelector({ value, onValueChange }: Readonly<Props>) {
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="none">No Project</SelectItem>
-        {projects.map((p) => (
-          <SelectItem key={p._id} value={p._id}>
-            {p.name}
-          </SelectItem>
-        ))}
+        {Array.isArray(projects) &&
+          projects.map((p) => (
+            <SelectItem key={p._id} value={p._id}>
+              {p.name}
+            </SelectItem>
+          ))}
       </SelectContent>
     </Select>
   );

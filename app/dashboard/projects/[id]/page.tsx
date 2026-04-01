@@ -89,6 +89,12 @@ export default function ProjectDetailsPage(props: {
   // New member-related state
   const [members, setMembers] = useState<any[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
+  const [membersPage, setMembersPage] = useState(1);
+  const [membersPagination, setMembersPagination] = useState({
+    total: 0,
+    totalPages: 0,
+    limit: 10,
+  });
   const [isOwner, setIsOwner] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -101,14 +107,26 @@ export default function ProjectDetailsPage(props: {
   useEffect(() => {
     async function load() {
       try {
-        const response = await axios.get(`/api/projects/${params.id}/members`);
+        setMembersLoading(true);
+        const response = await axios.get(
+          `/api/projects/${params.id}/members?page=${membersPage}&limit=10`,
+        );
         setMembers(response.data.members || []);
+        setMembersPagination({
+          total: response.data.total,
+          totalPages: response.data.totalPages,
+          limit: response.data.limit,
+        });
       } catch (error) {
         console.error("Failed to load members:", error);
+      } finally {
+        setMembersLoading(false);
       }
     }
-    load();
-  }, [params.id]);
+    if (activeTab === "members") {
+      load();
+    }
+  }, [params.id, membersPage, activeTab]);
 
   const filteredItems = historyItems.filter((item) => {
     const matchesSearch = (item.title || "")
@@ -966,29 +984,98 @@ export default function ProjectDetailsPage(props: {
                   ))}
                 </tbody>
               </table>
+              {membersPagination.totalPages > 1 && (
+                <div className="flex items-center justify-between border-t p-4">
+                  <div className="text-sm text-muted-foreground italic">
+                    Showing {members.length} of {membersPagination.total}{" "}
+                    members
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setMembersPage((p) => Math.max(1, p - 1))}
+                      disabled={membersPage === 1 || membersLoading}
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-sm font-medium">
+                      Page {membersPage} of {membersPagination.totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setMembersPage((p) =>
+                          Math.min(membersPagination.totalPages, p + 1),
+                        )
+                      }
+                      disabled={
+                        membersPage === membersPagination.totalPages ||
+                        membersLoading
+                      }
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             // Non-owner view: simple list
-            <ul className="space-y-2">
-              {members.map((m) => (
-                <li
-                  key={m.userId || `${m.email}-${m.role}`}
-                  className="flex items-center justify-between p-3 border rounded"
-                >
-                  <div>
-                    <div className="font-medium">
-                      {m.userName || m.userEmail}
+            <div className="space-y-4">
+              <ul className="space-y-2">
+                {members.map((m) => (
+                  <li
+                    key={m.userId || `${m.email}-${m.role}`}
+                    className="flex items-center justify-between p-3 border rounded shadow-sm bg-background"
+                  >
+                    <div>
+                      <div className="font-medium">
+                        {m.userName || m.userEmail}
+                      </div>
+                      <div className="text-sm text-muted-foreground capitalize">
+                        {m.role}
+                      </div>
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      {m.role}
+                    <div className="text-sm text-muted-foreground px-2 py-1 bg-muted rounded">
+                      {m.inviteStatus || "active"}
                     </div>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {m.inviteStatus || "active"}
-                  </div>
-                </li>
-              ))}
-            </ul>
+                  </li>
+                ))}
+              </ul>
+
+              {membersPagination.totalPages > 1 && (
+                <div className="flex items-center justify-center gap-4 pt-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setMembersPage((p) => Math.max(1, p - 1))}
+                    disabled={membersPage === 1 || membersLoading}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm">
+                    {membersPage} / {membersPagination.totalPages}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setMembersPage((p) =>
+                        Math.min(membersPagination.totalPages, p + 1),
+                      )
+                    }
+                    disabled={
+                      membersPage === membersPagination.totalPages ||
+                      membersLoading
+                    }
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}

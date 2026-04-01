@@ -1,13 +1,19 @@
 import { auth } from "@/lib/auth";
-import { checkUsage, incrementUsage } from "@/middleware/usage";
+import {
+  checkAndIncrementUsage,
+  revertFeatureUsage,
+  recordUsageResult,
+} from "@/middleware/usage";
 import axios from "axios";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import logger from "@/lib/logger";
 
 export async function POST(req: Request) {
+  let session;
   try {
     // 1. Authentication
-    const session = await auth.api.getSession({
+    session = await auth.api.getSession({
       headers: await headers(),
     });
 
@@ -15,8 +21,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2. Usage Check
-    const usageCheck = await checkUsage(session.user.id, "video_repurposer");
+    // 2. Usage Check (Atomic Check & Increment)
+    const usageCheck = await checkAndIncrementUsage(
+      session.user.id,
+      "video_repurposer",
+    );
+
     if (!usageCheck.allowed) {
       return NextResponse.json({ error: usageCheck.message }, { status: 403 });
     }
@@ -27,7 +37,7 @@ export async function POST(req: Request) {
     if (!title || !videoUrl) {
       return NextResponse.json(
         { error: "Video title and URL are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -56,7 +66,7 @@ export async function POST(req: Request) {
               "X-Goog-Upload-Header-Content-Type": "video/mp4", // Assuming MP4 for now
               "Content-Type": "application/json",
             },
-          }
+          },
         );
 
         const uploadUrl = uploadInitResponse.headers["x-goog-upload-url"];
@@ -75,12 +85,12 @@ export async function POST(req: Request) {
         // Wait for processing (simple delay, ideally should poll)
         await new Promise((resolve) => setTimeout(resolve, 5000));
       } catch (uploadError) {
-        console.error("Video upload failed:", uploadError);
+        logger.error({ err: uploadError }, "Video upload failed");
         // Fallback to text-only if video fails (or return error)
         // return NextResponse.json({ error: "Failed to process video" }, { status: 500 });
       }
     }
-    console.log("File URI:", fileUri);
+    logger.info({ fileUri }, "Video processing initiated");
     // 4. Generate Content
     const promptText = `
       Act as a professional YouTube Strategist and Social Media Manager.
@@ -123,25 +133,48 @@ export async function POST(req: Request) {
         contents: [{ parts: contentsPart }],
         generationConfig: { responseMimeType: "application/json" },
       },
-      { headers: { "Content-Type": "application/json" } }
+      { headers: { "Content-Type": "application/json" } },
     );
 
-    const generatedText =
+    let generatedText =
       response.data.candidates?.[0]?.content?.parts?.[0]?.text;
-    const parsedContent = JSON.parse(generatedText);
 
-    // Increment usage
-    await incrementUsage(session.user.id, "video_repurposer", 1);
+    if (!generatedText) {
+      throw new Error("AI generated empty content");
+    }
+
+    // Clean up potential markdown formatting
+    generatedText = generatedText.replace(/```json\n?|```/g, "").trim();
+
+    let parsedContent;
+    try {
+      parsedContent = JSON.parse(generatedText);
+    } catch (parseError) {
+      logger.error(
+        { err: parseError, generatedText },
+        "JSON Parse Error during video repurpose",
+      );
+      // Revert usage on parse failure
+      await revertFeatureUsage(session.user.id, "video_repurposer");
+      await recordUsageResult(session.user.id, "video_repurposer", 0, "fail");
+      return NextResponse.json(
+        { error: "Failed to parse AI response" },
+        { status: 500 },
+      );
+    }
+
+    // Record usage success and tokens (assuming 1 token for now as per original code)
+    await recordUsageResult(session.user.id, "video_repurposer", 1, "success");
 
     return NextResponse.json({ content: parsedContent });
   } catch (error: any) {
-    console.error(
-      "Video Repurposer Error:",
-      error.response?.data || error.message
+    logger.error(
+      { err: error.response?.data || error.message },
+      "Video Repurposer Error",
     );
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

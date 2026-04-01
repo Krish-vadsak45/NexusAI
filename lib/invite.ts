@@ -4,6 +4,7 @@ import connectToDatabase from "./db";
 import crypto from "crypto";
 import Notification from "../models/Notification.model";
 import Audit from "../models/Audit.model";
+import logger from "@/lib/logger";
 
 export async function generateInvite(
   projectId: string,
@@ -16,7 +17,7 @@ export async function generateInvite(
     try {
       await connectToDatabase();
     } catch (e) {
-      console.warn("connectToDatabase failed in generateInvite", e);
+      logger.warn({ err: e }, "connectToDatabase failed in generateInvite");
     }
   }
 
@@ -42,7 +43,7 @@ export async function generateInvite(
       });
     }
   } catch (e) {
-    console.warn("audit create failed", e);
+    logger.warn({ err: e }, "audit create failed");
   }
   await Notification.create({
     email,
@@ -61,7 +62,7 @@ export async function acceptInvite(
     try {
       await connectToDatabase();
     } catch (e) {
-      console.warn("connectToDatabase failed in acceptInvite", e);
+      logger.warn({ err: e }, "connectToDatabase failed in acceptInvite");
     }
   }
 
@@ -124,7 +125,7 @@ export async function acceptInvite(
       });
     }
   } catch (e) {
-    console.warn("audit create failed", e);
+    logger.warn({ err: e }, "audit create failed");
   }
 
   await Notification.create({

@@ -1,4 +1,5 @@
 import redisClient from "./redisClient";
+import logger from "./logger";
 
 const inMemoryStore = new Map<string, number[]>();
 
@@ -46,7 +47,7 @@ end
     }
     return { allowed, remaining, resetSeconds };
   } catch (e) {
-    console.warn("redis rate limit check failed", e);
+    logger.warn({ err: e }, "redis rate limit check failed");
     // fallthrough to in-memory fallback
     return null;
   }
@@ -86,7 +87,7 @@ export async function checkRateLimit(
       if (r) return r;
     }
   } catch (e) {
-    console.warn("redis checkRateLimit error", e);
+    logger.warn({ err: e }, "redis checkRateLimit error");
   }
   return checkRateLimitMemory(key, limit, windowMs);
 }
@@ -98,7 +99,7 @@ export async function resetRateLimit(key: string) {
       return;
     }
   } catch (e) {
-    console.warn("redis reset failed", e);
+    logger.warn({ err: e }, "redis reset failed");
   }
   inMemoryStore.delete(key);
 }

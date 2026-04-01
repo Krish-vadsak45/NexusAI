@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import axios from "axios";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import logger from "@/lib/logger";
 
 export async function POST(req: Request) {
   try {
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
     if (!prompt || typeof prompt !== "string") {
       return NextResponse.json(
         { error: "Prompt is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
     if (!apiKey) {
       return NextResponse.json(
         { error: "Server configuration error" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
       },
       {
         headers: { "Content-Type": "application/json" },
-      }
+      },
     );
 
     const enhancedPrompt =
@@ -63,10 +64,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ enhancedPrompt });
   } catch (error) {
-    console.error("Prompt Enhancement Error:", error);
+    logger.error({ err: error }, "Prompt Enhancement Error");
     return NextResponse.json(
       { error: "Failed to enhance prompt" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

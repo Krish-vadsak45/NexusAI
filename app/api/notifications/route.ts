@@ -12,8 +12,15 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const projectId = searchParams.get("projectId");
-  const page = Number.parseInt(searchParams.get("page") || "1");
-  const limit = Number.parseInt(searchParams.get("limit") || "50");
+
+  // Validate and clamp pagination parameters
+  let page = Number.parseInt(searchParams.get("page") || "1");
+  if (Number.isNaN(page) || page < 1) page = 1;
+
+  let limit = Number.parseInt(searchParams.get("limit") || "50");
+  if (Number.isNaN(limit) || limit < 1) limit = 50;
+  if (limit > 100) limit = 100; // Hard max limit
+
   const showRead = searchParams.get("showRead") === "true";
 
   const skip = (page - 1) * limit;

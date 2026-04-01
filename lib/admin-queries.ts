@@ -4,6 +4,12 @@ import Usage from "@/models/Usage.model";
 import User, { IUser } from "@/models/user.model";
 import { PLANS } from "@/lib/plans";
 import mongoose from "mongoose";
+import redis from "@/lib/redisClient";
+import logger from "@/lib/logger";
+
+const METRICS_CACHE_KEY = "admin_dashboard_metrics";
+const METRICS_CACHE_TTL = 3600; // 1 hour hard limit
+const STALE_THRESHOLD = 300; // 5 minutes revalidation threshold
 
 export type AdminMetrics = {
   totals: {
@@ -58,10 +64,44 @@ function safeNumber(value: number | undefined | null) {
 }
 
 function escapeRegex(input: string) {
-  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return input.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
-export async function getAdminMetrics(): Promise<AdminMetrics> {
+export async function getAdminMetrics(
+  forceRefresh = false,
+): Promise<AdminMetrics> {
+  // Try to get from cache first
+  if (!forceRefresh) {
+    try {
+      const cached = await redis.get(METRICS_CACHE_KEY);
+      if (cached) {
+        const envelope = JSON.parse(cached);
+        const age = (Date.now() - (envelope.cachedAt || 0)) / 1000;
+
+        // Stale-While-Revalidate: If older than threshold, refresh in background
+        if (age > STALE_THRESHOLD) {
+          logger.info(
+            { age: Math.round(age) },
+            "Metrics cache is stale. Revalidating...",
+          );
+          // Fire and forget background update
+          generateAndCacheMetrics().catch((err) =>
+            logger.error({ err }, "Background metrics refresh failed"),
+          );
+        }
+
+        logger.info("Serving admin metrics from cache");
+        return envelope.metrics;
+      }
+    } catch (e) {
+      logger.error({ err: e }, "Redis metrics fetch failed");
+    }
+  }
+
+  return await generateAndCacheMetrics();
+}
+
+async function generateAndCacheMetrics(): Promise<AdminMetrics> {
   await connectToDatabase();
   const now = new Date();
   const periodStart = new Date(now);
@@ -156,7 +196,8 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
       : undefined,
   }));
 
-  return {
+  // Cache result for 1 hour to prevent excessive aggregation pressure
+  const result: AdminMetrics = {
     totals: {
       users: usersTotal,
       activeSubscriptions: activeSubs,
@@ -171,17 +212,34 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
     planBreakdown,
     pastDue,
   };
+
+  // Wrap in envelope with timestamp for Stale-While-Revalidate
+  const envelope = {
+    metrics: result,
+    cachedAt: Date.now(),
+  };
+
+  try {
+    await redis.set(
+      METRICS_CACHE_KEY,
+      JSON.stringify(envelope),
+      "EX",
+      METRICS_CACHE_TTL,
+    );
+  } catch (e) {
+    logger.error({ err: e }, "Redis metrics cache set failed");
+  }
+
+  return result;
 }
 
 export async function getAdminUsers(options: {
   query?: string;
-  page?: number;
+  cursor?: string;
   limit?: number;
 }) {
   await connectToDatabase();
-  const page = Math.max(1, Number(options.page) || 1);
   const limit = Math.min(50, Math.max(1, Number(options.limit) || 20));
-  const skip = (page - 1) * limit;
 
   const filter: Record<string, any> = {};
   if (options.query) {
@@ -195,14 +253,16 @@ export async function getAdminUsers(options: {
     }
   }
 
+  if (options.cursor) {
+    filter._id = { $lt: options.cursor };
+  }
+
   const [total, users] = await Promise.all([
-    User.countDocuments(filter),
-    User.find(filter)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean<IUser[]>(),
+    User.countDocuments(options.query ? filter : {}),
+    User.find(filter).sort({ _id: -1 }).limit(limit).lean<IUser[]>(),
   ]);
+
+  const nextCursor = users.at(-1)?._id || null;
 
   const userIds = users
     .map((user) => user._id)
@@ -258,7 +318,7 @@ export async function getAdminUsers(options: {
 
   return {
     users: rows,
-    page,
+    nextCursor,
     limit,
     total,
   };

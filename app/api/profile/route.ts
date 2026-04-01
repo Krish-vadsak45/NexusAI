@@ -24,9 +24,12 @@ export async function GET(req: NextRequest) {
   const subscription = await Subscription.findOne({ user: session.user.id });
 
   // Check if a twofactor record exists for this user
-  const twoFactorDoc = await db
-    .collection("twoFactor")
-    .findOne({ userId: new ObjectId(session.user.id) });
+  let twoFactorDoc = null;
+  if (ObjectId.isValid(session.user.id)) {
+    twoFactorDoc = await db
+      .collection("twoFactor")
+      .findOne({ userId: new ObjectId(session.user.id) });
+  }
 
   return NextResponse.json({
     user: {

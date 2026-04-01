@@ -1,8 +1,13 @@
 import { auth } from "@/lib/auth";
-import { checkUsage, incrementUsage } from "@/middleware/usage";
+import {
+  checkAndIncrementUsage,
+  revertFeatureUsage,
+  recordUsageResult,
+} from "@/middleware/usage";
 import { v2 as cloudinary } from "cloudinary";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import logger from "@/lib/logger";
 
 // Configure Cloudinary
 cloudinary.config({
@@ -12,9 +17,10 @@ cloudinary.config({
 });
 
 export async function POST(req: Request) {
+  let session;
   try {
     // 1. Authentication Check
-    const session = await auth.api.getSession({
+    session = await auth.api.getSession({
       headers: await headers(),
     });
 
@@ -25,9 +31,12 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Usage Check
+    // 2. Usage Check (Atomic)
     const userId = session.user.id;
-    const usageCheck = await checkUsage(userId, "background_removal");
+    const usageCheck = await checkAndIncrementUsage(
+      userId,
+      "background_removal",
+    );
     if (!usageCheck.allowed) {
       return NextResponse.json({ error: usageCheck.message }, { status: 403 });
     }
@@ -37,9 +46,22 @@ export async function POST(req: Request) {
     const imageFile = formData.get("image") as File;
 
     if (!imageFile) {
+      await revertFeatureUsage(userId, "background_removal");
+      await recordUsageResult(userId, "background_removal", 0, "fail");
       return NextResponse.json(
         { error: "Image file is required" },
         { status: 400 },
+      );
+    }
+
+    // Check file size (max 5MB)
+    const MAX_FILE_SIZE = 5 * 1024 * 1024;
+    if (imageFile.size > MAX_FILE_SIZE) {
+      await revertFeatureUsage(userId, "background_removal");
+      await recordUsageResult(userId, "background_removal", 0, "fail");
+      return NextResponse.json(
+        { error: "File too large. Max 5MB allowed." },
+        { status: 413 },
       );
     }
 
@@ -70,9 +92,8 @@ export async function POST(req: Request) {
       format: "png",
     });
 
-    // 6. Increment Usage
-    // Cloudinary BG removal costs credits.
-    await incrementUsage(userId, "background_removal", 5000, "success");
+    // 6. Record Usage Success
+    await recordUsageResult(userId, "background_removal", 5000, "success");
 
     return NextResponse.json({
       url: processedUrl,
@@ -82,16 +103,7 @@ export async function POST(req: Request) {
       format: uploadResult.format,
     });
   } catch (error: any) {
-    console.error("Background Removal Error:", error);
-
-    // Get session again if it was successful before the error
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-    if (session?.user?.id) {
-      await incrementUsage(session.user.id, "background_removal", 0, "fail");
-    }
-
+    logger.error({ err: error }, "Background Removal Error");
     return NextResponse.json(
       { error: error.message || "Internal Server Error" },
       { status: 500 },

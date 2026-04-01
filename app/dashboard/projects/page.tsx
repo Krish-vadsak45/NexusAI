@@ -74,13 +74,8 @@ export default function ProjectsPage() {
   // Search and Pagination state
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch] = useDebounce(searchTerm, 500);
-  const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState<PaginationData>({
-    total: 0,
-    page: 1,
-    limit: 12,
-    totalPages: 0,
-  });
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
 
   const {
     register,
@@ -91,33 +86,46 @@ export default function ProjectsPage() {
     resolver: zodResolver(formSchema),
   });
 
-  const fetchProjects = useCallback(async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: "12",
-        q: debouncedSearch,
-      });
-      const response = await axios.get(`/api/projects?${params.toString()}`);
-      setProjects(response.data.projects);
-      setPagination(response.data.pagination);
-    } catch (error) {
-      console.error("Failed to fetch projects", error);
-      toast.error("Failed to load projects");
-    } finally {
-      setLoading(false);
-    }
-  }, [page, debouncedSearch]);
+  const fetchProjects = useCallback(
+    async (cursor: string | null = null, resetList = false) => {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams({
+          limit: "12",
+          q: debouncedSearch,
+        });
+        if (cursor) {
+          params.append("cursor", cursor);
+        }
+        const response = await axios.get(`/api/projects?${params.toString()}`);
+
+        if (resetList) {
+          setProjects(response.data.projects);
+        } else {
+          setProjects((prev) => [...prev, ...response.data.projects]);
+        }
+
+        setNextCursor(response.data.nextCursor);
+        setTotalCount(response.data.total);
+      } catch (error) {
+        console.error("Failed to fetch projects", error);
+        toast.error("Failed to load projects");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [debouncedSearch],
+  );
 
   useEffect(() => {
-    fetchProjects();
+    fetchProjects(null, true);
   }, [fetchProjects]);
 
-  // Reset page when search changes
-  useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch]);
+  const handleLoadMore = () => {
+    if (nextCursor) {
+      fetchProjects(nextCursor, false);
+    }
+  };
 
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
@@ -317,64 +325,11 @@ export default function ProjectsPage() {
               ))}
             </div>
 
-            {pagination.totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-neutral-800 pt-6">
-                <div className="text-sm text-neutral-400">
-                  Showing {projects.length} of {pagination.total} projects
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-neutral-800 bg-neutral-900/50"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1 || loading}
-                  >
-                    Previous
-                  </Button>
-                  <div className="flex items-center gap-1 mx-2">
-                    {Array.from(
-                      { length: pagination.totalPages },
-                      (_, i) => i + 1,
-                    )
-                      .filter(
-                        (p) =>
-                          p === 1 ||
-                          p === pagination.totalPages ||
-                          (p >= page - 1 && p <= page + 1),
-                      )
-                      .map((p, idx, arr) => {
-                        const showEllipsis = idx > 0 && p !== arr[idx - 1] + 1;
-                        return (
-                          <div key={p} className="flex items-center">
-                            {showEllipsis && (
-                              <span className="px-2 text-neutral-600">...</span>
-                            )}
-                            <Button
-                              variant={p === page ? "default" : "outline"}
-                              size="sm"
-                              className={`w-8 h-8 p-0 ${p === page ? "bg-blue-600 border-blue-500" : "border-neutral-800 bg-neutral-900/50"}`}
-                              onClick={() => setPage(p)}
-                              disabled={loading}
-                            >
-                              {p}
-                            </Button>
-                          </div>
-                        );
-                      })}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-neutral-800 bg-neutral-900/50"
-                    onClick={() =>
-                      setPage((p) => Math.min(pagination.totalPages, p + 1))
-                    }
-                    disabled={page === pagination.totalPages || loading}
-                  >
-                    Next
-                  </Button>
-                </div>
+            {nextCursor && (
+              <div className="flex justify-center mt-6">
+                <Button onClick={handleLoadMore} disabled={loading}>
+                  {loading ? <SpinnerLoader size="sm" /> : "Load More"}
+                </Button>
               </div>
             )}
           </div>

@@ -1,13 +1,19 @@
 import { auth } from "@/lib/auth";
-import { checkUsage, incrementUsage } from "@/middleware/usage";
+import {
+  checkAndIncrementUsage,
+  revertFeatureUsage,
+  recordUsageResult,
+} from "@/middleware/usage";
 import axios from "axios";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import logger from "@/lib/logger";
 
 export async function POST(req: Request) {
+  let session;
   try {
     // 1. Authentication Check
-    const session = await auth.api.getSession({
+    session = await auth.api.getSession({
       headers: await headers(),
     });
 
@@ -18,9 +24,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // --- NEW: CHECK USAGE ---
+    // --- NEW: CHECK USAGE (Atomic) ---
     const userId = session.user.id;
-    const usageCheck = await checkUsage(userId, "article_writer");
+    const usageCheck = await checkAndIncrementUsage(userId, "article_writer");
     if (!usageCheck.allowed) {
       return NextResponse.json(
         { error: usageCheck.message },
@@ -103,8 +109,9 @@ export async function POST(req: Request) {
     const data = await response.data;
 
     if (response.status < 200 || response.status >= 300) {
-      console.error("Gemini API Error:", data);
-      await incrementUsage(userId, "article_writer", 0, "fail");
+      logger.error({ err: data, status: response.status }, "Gemini API Error");
+      await revertFeatureUsage(userId, "article_writer");
+      await recordUsageResult(userId, "article_writer", 0, "fail");
       return NextResponse.json(
         { error: data.error?.message || "Failed to generate content" },
         { status: response.status },
@@ -115,7 +122,8 @@ export async function POST(req: Request) {
     let generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!generatedText) {
-      await incrementUsage(userId, "article_writer", 0, "fail");
+      await revertFeatureUsage(userId, "article_writer");
+      await recordUsageResult(userId, "article_writer", 0, "fail");
       return NextResponse.json(
         { error: "AI generated empty content" },
         { status: 500 },
@@ -128,10 +136,10 @@ export async function POST(req: Request) {
     // Parse JSON to ensure it's valid before sending
     try {
       const parsedContent = JSON.parse(generatedText);
-      console.log("Parsed Content:", parsedContent);
+      logger.info({ parsedContent }, "Article generation successful");
       const estimatedTokens =
         (prompt.length + (generatedText?.length || 0)) / 4;
-      await incrementUsage(
+      await recordUsageResult(
         userId,
         "article_writer",
         Math.ceil(estimatedTokens),
@@ -139,9 +147,12 @@ export async function POST(req: Request) {
       );
       return NextResponse.json({ content: parsedContent });
     } catch (e) {
-      console.error("JSON Parse Error:", e);
-      console.log("Raw Generated Text:", generatedText); // Log for debugging
-      await incrementUsage(userId, "article_writer", 0, "fail");
+      logger.error(
+        { err: e, generatedText },
+        "JSON Parse Error during article generation",
+      );
+      await revertFeatureUsage(userId, "article_writer");
+      await recordUsageResult(userId, "article_writer", 0, "fail");
       return NextResponse.json(
         {
           error:
@@ -151,7 +162,7 @@ export async function POST(req: Request) {
       );
     }
   } catch (error) {
-    console.error("Error in article-writer API:", error);
+    logger.error({ err: error }, "Error in article-writer API");
     // Note: We don't have userId if session check failed, but we handle that above
     // If it fails here, it's likely a serious server error
     return NextResponse.json(

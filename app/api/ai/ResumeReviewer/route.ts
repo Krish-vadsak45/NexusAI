@@ -1,28 +1,34 @@
 import { auth } from "@/lib/auth";
-import { checkUsage, incrementUsage } from "@/middleware/usage";
+import {
+  checkAndIncrementUsage,
+  revertFeatureUsage,
+  recordUsageResult,
+} from "@/middleware/usage";
 import axios from "axios";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import mammoth from "mammoth";
 import { fetchAndExtractPdfText } from "@/lib/landchain";
+import logger from "@/lib/logger";
 
 export async function POST(req: Request) {
+  let session;
   try {
     // 1. Authentication Check
-    const session = await auth.api.getSession({
+    session = await auth.api.getSession({
       headers: await headers(),
     });
 
     if (!session) {
       return NextResponse.json(
         { error: "Unauthorized. Please sign in to use this tool." },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
-    // 2. Usage Check (Optional - uncomment if needed)
+    // 2. Usage Check (Atomic)
     const userId = session.user.id;
-    const usageCheck = await checkUsage(userId, "resume_reviewer");
+    const usageCheck = await checkAndIncrementUsage(userId, "resume_reviewer");
     if (!usageCheck.allowed) {
       return NextResponse.json({ error: usageCheck.message }, { status: 403 });
     }
@@ -34,7 +40,7 @@ export async function POST(req: Request) {
     if (!fileUrl) {
       return NextResponse.json(
         { error: "File URL is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -45,9 +51,9 @@ export async function POST(req: Request) {
     if (!fileType || fileType === "application/pdf") {
       try {
         // resumeText = await fetchAndExtractPdfText(fileUrl);
-        console.log("langchain  ,,,", resumeText);
+        logger.info({ resumeText }, "langchain extraction result");
       } catch (error) {
-        console.log("LangChain PDF extraction failed:", error);
+        logger.error({ err: error }, "LangChain PDF extraction failed");
       }
     }
 
@@ -77,7 +83,7 @@ export async function POST(req: Request) {
         } catch (e) {
           return NextResponse.json(
             { error: "Unsupported file type" },
-            { status: 400 }
+            { status: 400 },
           );
         }
       }
@@ -86,7 +92,7 @@ export async function POST(req: Request) {
     if (!resumeText.trim()) {
       return NextResponse.json(
         { error: "Could not extract text from the file" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -94,7 +100,7 @@ export async function POST(req: Request) {
     if (!apiKey) {
       return NextResponse.json(
         { error: "Server configuration error: API key missing" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -115,7 +121,7 @@ export async function POST(req: Request) {
       Resume Text:
       "${resumeText.slice(
         0,
-        20000
+        20000,
       )}" // Limit text length to avoid token limits if necessary
       
       Return the result in the following JSON format:
@@ -140,14 +146,16 @@ export async function POST(req: Request) {
       {
         headers: { "Content-Type": "application/json" },
         validateStatus: () => true,
-      }
+      },
     );
 
     if (response.status !== 200) {
       console.error("Gemini API Error:", response.data);
+      await revertFeatureUsage(userId, "resume_reviewer");
+      await recordUsageResult(userId, "resume_reviewer", 0, "fail");
       return NextResponse.json(
         { error: "Failed to analyze resume" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -155,32 +163,38 @@ export async function POST(req: Request) {
       response.data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!generatedText) {
+      await revertFeatureUsage(userId, "resume_reviewer");
+      await recordUsageResult(userId, "resume_reviewer", 0, "fail");
       return NextResponse.json(
         { error: "No analysis generated" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
     let analysisResult;
     try {
       analysisResult = JSON.parse(generatedText);
+      await recordUsageResult(userId, "resume_reviewer", 1, "success");
     } catch (e) {
       console.error("JSON Parse Error:", e);
+      await revertFeatureUsage(userId, "resume_reviewer");
+      await recordUsageResult(userId, "resume_reviewer", 0, "fail");
       return NextResponse.json(
         { error: "Failed to parse analysis result" },
-        { status: 500 }
+        { status: 500 },
       );
     }
-
-    // 7. Increment Usage (Optional)
-    await incrementUsage(userId, "resume_reviewer", 1);
 
     return NextResponse.json(analysisResult);
   } catch (error: any) {
     console.error("Resume Reviewer Error:", error);
+    if (session?.user?.id) {
+      await revertFeatureUsage(session.user.id, "resume_reviewer");
+      await recordUsageResult(session.user.id, "resume_reviewer", 0, "fail");
+    }
     return NextResponse.json(
       { error: error.message || "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

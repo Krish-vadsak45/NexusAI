@@ -10,13 +10,13 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const query = searchParams.get("q") ?? undefined;
-  const page = searchParams.get("page") ?? undefined;
+  const cursor = searchParams.get("cursor") ?? undefined;
   const limit = searchParams.get("limit") ?? undefined;
 
   try {
     const result = await getAdminUsers({
       query,
-      page: page ? Number(page) : undefined,
+      cursor,
       limit: limit ? Number(limit) : undefined,
     });
     return NextResponse.json(result);

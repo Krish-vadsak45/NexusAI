@@ -8,8 +8,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: admin.error }, { status: admin.status });
   }
 
+  const { searchParams } = new URL(req.url);
+  const refresh = searchParams.get("refresh") === "true";
+
   try {
-    const metrics = await getAdminMetrics();
+    const metrics = await getAdminMetrics(refresh);
     return NextResponse.json(metrics);
   } catch (error: any) {
     return NextResponse.json(

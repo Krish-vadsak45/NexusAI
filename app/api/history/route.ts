@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import History from "@/models/History.model";
 import connectToDatabase from "@/lib/db";
+import logger from "@/lib/logger";
 
 export async function POST(req: Request) {
   try {
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(historyItem);
   } catch (error) {
-    console.error("[HISTORY_POST]", error);
+    logger.error({ err: error }, "[HISTORY_POST]");
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
@@ -47,8 +48,13 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const projectId = searchParams.get("projectId");
-    const page = Number.parseInt(searchParams.get("page") || "1");
-    const limit = Number.parseInt(searchParams.get("limit") || "12");
+    const cursor = searchParams.get("cursor"); // cursor is the _id of the last item
+
+    // Validate and clamp limit
+    let limit = Number.parseInt(searchParams.get("limit") || "12");
+    if (Number.isNaN(limit) || limit < 1) limit = 12;
+    if (limit > 50) limit = 50; // Hard max limit
+
     const tool = searchParams.get("tool");
     const search = searchParams.get("search");
 
@@ -65,21 +71,25 @@ export async function GET(req: Request) {
       query.title = { $regex: search, $options: "i" };
     }
 
-    const skip = (page - 1) * limit;
+    if (cursor) {
+      query._id = { $lt: cursor };
+    }
 
     const [history, totalCount] = await Promise.all([
-      History.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
-      History.countDocuments(query),
+      History.find(query).sort({ _id: -1 }).limit(limit).lean(),
+      History.countDocuments(query), // Optional: keep if total count is needed for UI
     ]);
+
+    const nextCursor =
+      history.length > 0 ? history[history.length - 1]._id : null;
 
     return NextResponse.json({
       items: history,
+      nextCursor,
       totalCount,
-      totalPages: Math.ceil(totalCount / limit),
-      currentPage: page,
     });
   } catch (error) {
-    console.error("[HISTORY_GET]", error);
+    logger.error({ err: error }, "[HISTORY_GET]");
     return new NextResponse("Internal Error", { status: 500 });
   }
 }

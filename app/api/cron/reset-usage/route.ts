@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import connectToDatabase from "@/lib/db";
 import Usage from "@/models/Usage.model";
+import logger from "@/lib/logger";
 
 export async function GET(req: Request) {
   try {
@@ -30,7 +31,7 @@ export async function GET(req: Request) {
           tokensUsed: 0,
           date: new Date(), // Mark as reset for today
         },
-      }
+      },
     );
 
     return NextResponse.json({
@@ -38,10 +39,10 @@ export async function GET(req: Request) {
       message: `Daily usage reset completed. Updated ${result.modifiedCount} records.`,
     });
   } catch (error) {
-    console.error("Cron Job Error:", error);
+    logger.error({ err: error }, "Cron Job Error");
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

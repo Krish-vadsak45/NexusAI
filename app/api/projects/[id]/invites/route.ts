@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import connectToDatabase from "@/lib/db";
 import { auth } from "@/lib/auth";
 import Project from "@/models/Project.model";
@@ -27,8 +28,16 @@ export async function POST(
 
   const body = await req.json();
   const { email, role } = body;
-  if (!email)
-    return NextResponse.json({ error: "email required" }, { status: 400 });
+
+  const emailSchema = z.string().email("Invalid email format");
+  const result = emailSchema.safeParse(email);
+
+  if (!result.success) {
+    return NextResponse.json(
+      { error: result.error.errors[0].message },
+      { status: 400 },
+    );
+  }
 
   await connectToDatabase();
   // rate-limit invites per actor (simple in-memory limiter)
