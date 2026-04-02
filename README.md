@@ -1,8 +1,32 @@
 # NexusAI 🤖✨
 
-**NexusAI** is a comprehensive, all-in-one SaaS platform that empowers users with a suite of generative AI tools. Built with the latest web technologies including **Next.js 16**, **React 19**, and **Tailwind CSS 4**, it features a robust subscription system, enterprise-grade security, and seamless AI integration.
+**NexusAI** is an advanced, enterprise-ready Generative AI SaaS platform. Built with a "Security-First" and "High-Availability" mindset, it provides a suite of professional AI tools powered by **Next.js 16**, **React 19**, and a sophisticated **Multi-Layer Redis Architecture**.
 
-![NexusAI Banner](https://via.placeholder.com/1200x400?text=NexusAI+Dashboard+Preview)
+---
+
+## 🎯 The Problem & Our Solution
+
+### The Fragmented AI Landscape
+Today, users and developers face a "Subscription Fatigue" and fragmented workflow—switching between 10+ different AI sites for text, code, images, and resume reviews. Most open-source AI wrappers are also vulnerable to **Database DDOS**, **Cache Stampedes**, and **OOM crashes** when they go viral.
+
+### Our Solution: The Nexus Engine
+NexusAI solves this by consolidating the most powerful AI capabilities into a **single, unified command center**. 
+1. **Vertical Integration**: One subscription (Free/Pro/Premium) gives you access to the entire AI lifecycle—from brainstorming articles to generating code and polishing your professional resume.
+2. **Infrastructure Resilience**: We don't just "wrap" an API. We've built an **Enterprise-Grade Caching Core** using Bloom Filters and Request Coalescing to ensure that the platform stays fast and cost-effective, even under massive concurrent load.
+3. **Usage Guard Intelligence**: Real-time monitoring and automated quota resets ensure fair usage while protecting your API overhead.
+
+---
+
+## 🚀 The Multi-Layer Defense Architecture (New v2.0)
+Unlike standard SaaS starters, NexusAI is hardened against modern attack vectors and bottlenecks:
+
+*   **🛡️ Bloom Filter Firewall:** Protects the database from "Cache Penetration" attacks by blocking requests for non-existent IDs at the edge.
+*   **⛓️ Request Coalescing:** Eliminates "Cache Stampedes." If 1,000 users hit an expired key simultaneously, only **one** database query is executed.
+*   **⚡ L1/L2 Hybrid Caching:** Data lives in **Process Memory (L1)** for <1ms access and **Redis (L2)** for global persistence.
+*   **📉 Intelligent TTL & Jitter:** Prevents "Thundering Herd" database spikes by randomizing cache expiration windows.
+*   **📦 Storage Compression:** Uses field projection to keep the Redis memory footprint 90% lighter.
+
+---
 
 ## 🚀 Features
 
@@ -27,109 +51,49 @@ Access a diverse range of generative tools powered by **LangChain** and **Google
 -   **Two-Factor Authentication (2FA)**: Enhanced security for user accounts.
 -   **Role-Based Access**: Protected routes and API endpoints.
 
-## 🛠️ Tech Stack
+---
 
--   **Framework**: [Next.js 16 (App Router)](https://nextjs.org/)
--   **Language**: [TypeScript](https://www.typescriptlang.org/)
--   **Styling**: [Tailwind CSS 4](https://tailwindcss.com/) & [Shadcn UI](https://ui.shadcn.com/)
--   **Database**: [MongoDB](https://www.mongodb.com/) (with Mongoose)
--   **Authentication**: [Better-Auth](https://www.better-auth.com/)
--   **Payments**: [Stripe](https://stripe.com/)
--   **AI Orchestration**: [LangChain](https://js.langchain.com/)
--   **File Storage**: [UploadThing](https://uploadthing.com/), [ImageKit](https://imagekit.io/), [Cloudinary](https://cloudinary.com/)
--   **Validation**: [Zod](https://zod.dev/)
+## 🛠️ Modern Tech Stack
+-   **Framework**: [Next.js 16 (App Router)](https://nextjs.org/) & [React 19](https://react.dev/)
+-   **Styling**: [Tailwind CSS 4](https://tailwindcss.com/) & [Framer Motion](https://www.framer.com/motion/)
+-   **Database**: [MongoDB](https://www.mongodb.com/) with Mongoose (Optimized with Lean Queries)
+-   **Caching**: [Redis (ioredis)](https://redis.io/) with Bloom Filter support (Redis Stack/Upstash)
+-   **Payments**: [Stripe](https://stripe.com/) (Subscription Tiers & Webhooks)
+-   **File Storage**: [UploadThing](https://uploadthing.com/) & [ImageKit](https://imagekit.io/)
+-   **Logging**: High-performance logging with [Pino](https://github.com/pinojs/pino)
+
+---
 
 ## ⚡ Getting Started
 
-### Prerequisites
--   Node.js (v18+)
--   MongoDB Database
--   Stripe Account
--   Google Cloud Console Project (for OAuth & Gemini)
+### 1. Environment Configuration
+Copy the `.env.example` file to `.env` and fill in your credentials:
+```bash
+cp .env.example .env
+```
 
-### Installation
+### 2. Installation & Build
+```bash
+npm install
+npm run build
+npm run start
+```
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/Krish-vadsak45/NexusAI.git
-    cd NexusAI
-    ```
+---
 
-2.  **Install dependencies:**
-    ```bash
-    npm install
-    # or
-    yarn install
-    ```
+## 📂 Architecture Overview
+```text
+├── app/api/       # Multi-layer cached API endpoints
+├── lib/           # Enterprise Cache Engine, ACL, and Auth Client
+├── middleware/    # Usage quotas and Auth protection
+├── models/        # Mongoose schemas with indexing
+└── components/    # Atomic UI components with Tailwind 4
+```
 
-3.  **Set up Environment Variables:**
-    Create a `.env` file in the root directory and add the following:
+---
 
-    ```env
-    # Database
-    MONGODB_URI=your_mongodb_connection_string
+## 🤝 Roadmap & Contributing
+NexusAI is built for scale. Contributions regarding new AI models or performance optimizations are welcome.
+1. Fork it → 2. Branch it → 3. PR it.
 
-    # Auth (Better-Auth)
-    BETTER_AUTH_SECRET=your_generated_secret
-    BETTER_AUTH_URL=http://localhost:3000
-    
-    # Google OAuth
-    GOOGLE_CLIENT_ID=your_google_client_id
-    GOOGLE_CLIENT_SECRET=your_google_client_secret
-
-    # AI Services
-    GEMINI_API_KEY=your_gemini_api_key
-    POLLINATIONS_API_KEY=your_pollinations_key
-
-    # Stripe
-    STRIPE_SECRET_KEY=your_stripe_secret_key
-    STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
-    STRIPE_PRICE_ID_PRO=price_id_for_pro_plan
-    STRIPE_PRICE_ID_PREMIUM=price_id_for_premium_plan
-
-    # Image Services
-    NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=...
-    UPLOADTHING_TOKEN=...
-    IMAGEKIT_PRIVATE_KEY=...
-    ```
-
-4.  **Run the development server:**
-    ```bash
-    npm run dev
-    ```
-
-5.  Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## 📂 Project Structure
-
-    ├── app/ # Next.js App Router pages & API routes
-    │ ├── api/ # Backend API endpoints (AI, Auth, Stripe)
-    │ ├── dashboard/ # User dashboard & tool interfaces
-    │ └── (auth)/ # Authentication pages
-    ├── components/ # Reusable UI components
-    │ ├── ui/ # Shadcn UI primitives
-    │ └── ... # Feature-specific components
-    ├── lib/ # Utility functions & configurations
-    │ ├── db.ts # Database connection
-    │ ├── plans.ts # Subscription plan definitions
-    │ └── stripe.ts # Stripe initialization
-    ├── models/ # Mongoose database schemas
-    ├── public/ # Static assets
-    └── middleware/ # Auth & Usage protection middleware
-
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1.  Fork the project
-2.  Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3.  Commit your changes (`git commit -m 'Add## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1.  Fork the project
-2.  Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3.  Commit your changes (`git commit -m 'Add ome AmazingFeature`) 
-4.  Push to the branch (`git push origin feature/AmazingFeature`)
 

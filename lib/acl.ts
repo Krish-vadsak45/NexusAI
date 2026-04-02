@@ -7,6 +7,9 @@ export type Role = "owner" | "editor" | "viewer";
 // 1. Define Cache Settings
 const ACL_CACHE_TTL = 300; // 5 minutes
 
+// In-Memory map to store pending database promises (Cache Stampede Protection)
+const inFlightAclRequests = new Map<string, Promise<any>>();
+
 export function rolePriority(r: string | undefined): number {
   switch (r) {
     case "owner":
@@ -50,39 +53,93 @@ export async function checkProjectMembership(
     logger.warn({ err: e }, "ACL Redis fetch failed");
   }
 
-  const project = await Project.findById(projectId).lean();
-  if (!project) return { allowed: false };
+  // --- CACHE STAMPEDE PREVENTION (Request Coalescing) ---
+  // If 1000 requests hit simultaneously for the same user/project while cache is empty,
+  // only the FIRST request queries the DB. The other 999 will wait on this stored Promise.
+  if (inFlightAclRequests.has(cacheKey)) {
+    const coalescedResult = await inFlightAclRequests.get(cacheKey);
 
-  // Determine role
-  let member = (project as any).members?.find((m: any) => m.userId === userId);
-  let role = member?.role;
+    // We must re-evaluate allowedRoles for each coalesced request, as parallel callers
+    // might have asked for different permission levels on the same project
+    const memberPriority = rolePriority(coalescedResult.member?.role);
+    const minAllowedPriority = Math.min(
+      ...allowedRoles.map((role) => rolePriority(role)),
+    );
 
-  if ((project as any).userId === userId) {
-    role = "owner";
-    member = { userId, role: "owner" };
-  }
-
-  if (!role) return { allowed: false };
-
-  const memberPriority = rolePriority(role);
-  const minAllowedPriority = Math.min(
-    ...allowedRoles.map((r) => rolePriority(r)),
-  );
-
-  const result = {
-    allowed: memberPriority >= minAllowedPriority,
-    project,
-    member: member || { userId, role },
-  };
-
-  // 3. Store result in Cache for 5 minutes
-  if (result.allowed) {
-    try {
-      await redis.set(cacheKey, JSON.stringify(result), "EX", ACL_CACHE_TTL);
-    } catch (e) {
-      logger.warn({ err: e }, "ACL Redis set failed");
+    if (memberPriority >= minAllowedPriority) {
+      return { allowed: true, ...coalescedResult };
     }
+    return { allowed: false };
   }
 
-  return result;
+  const fetchPromise = (async () => {
+    try {
+      const project = await Project.findById(projectId).lean();
+      if (!project) return { allowed: false };
+
+      // Determine role
+      let member = (project as any).members?.find(
+        (m: any) => m.userId === userId,
+      );
+      let role = member?.role;
+
+      if ((project as any).userId === userId) {
+        role = "owner";
+        member = { userId, role: "owner" };
+      }
+
+      if (!role) return { allowed: false };
+
+      const memberObj = member || { userId, role };
+      const memberPriority = rolePriority(role);
+      const minAllowedPriority = Math.min(
+        ...allowedRoles.map((r) => rolePriority(r)),
+      );
+
+      const result = {
+        allowed: memberPriority >= minAllowedPriority,
+        project,
+        member: memberObj,
+      };
+
+      // 3. Store result in Cache for 5 minutes
+      if (result.allowed) {
+        try {
+          await redis.set(
+            cacheKey,
+            JSON.stringify(result),
+            "EX",
+            ACL_CACHE_TTL,
+          );
+        } catch (e) {
+          logger.warn({ err: e }, "ACL Redis set failed");
+        }
+      }
+
+      return result;
+    } finally {
+      // Clean up the in-flight map when done so future missing cache hits do a fresh DB query
+      inFlightAclRequests.delete(cacheKey);
+    }
+  })();
+
+  // Store the promise in our map so other concurrent requests can wait for it
+  inFlightAclRequests.set(cacheKey, fetchPromise);
+  return fetchPromise;
+}
+
+/**
+ * Remove a user's cached ACL payload for a specific project.
+ * Call this whenever a user's role on a project changes or they are removed.
+ */
+export async function invalidateAclCache(userId: string, projectId: string) {
+  if (!userId || !projectId) return;
+
+  const cacheKey = `acl:user:${userId}:proj:${projectId}`;
+  try {
+    await redis.del(cacheKey);
+    logger.info({ userId, projectId }, "ACL cache invalidated");
+  } catch (e) {
+    logger.warn({ err: e }, "ACL Redis invalidation failed");
+  }
 }

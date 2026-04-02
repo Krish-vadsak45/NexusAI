@@ -9,6 +9,9 @@ import redis from "@/lib/redisClient";
 const TEMPLATES_CACHE_TTL = 3600; // 1 hour
 const TEMPLATES_STALE_THRESHOLD = 300; // 5 minutes
 
+// In-Memory map for request coalescing against template queries
+const inFlightTemplateRequests = new Map<string, Promise<any>>();
+
 function buildTemplateQuery(
   category: string | null,
   search: string | null,
@@ -43,44 +46,57 @@ async function fetchAndCacheTemplates(
   page: number,
   cacheKey: string,
 ) {
-  try {
-    await connectToDatabase();
-    const [templates, total] = await Promise.all([
-      Template.find(query)
-        .sort({ createdAt: -1 })
-        .skip((page - 1) * limit)
-        .limit(limit)
-        .populate({ path: "userId", model: User, select: "name image" })
-        .lean(),
-      Template.countDocuments(query),
-    ]);
-
-    const result = {
-      templates,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
-
-    const envelope = {
-      data: result,
-      cachedAt: Date.now(),
-    };
-
-    await redis.set(
-      cacheKey,
-      JSON.stringify(envelope),
-      "EX",
-      TEMPLATES_CACHE_TTL,
-    );
-    return result;
-  } catch (e) {
-    console.error("Critical error in fetchAndCacheTemplates", e);
-    throw e;
+  // --- CACHE STAMPEDE PREVENTION ---
+  const inFlightKey = cacheKey;
+  if (inFlightTemplateRequests.has(inFlightKey)) {
+    return inFlightTemplateRequests.get(inFlightKey);
   }
+
+  const fetchPromise = (async () => {
+    try {
+      await connectToDatabase();
+      const [templates, total] = await Promise.all([
+        Template.find(query)
+          .sort({ createdAt: -1 })
+          .skip((page - 1) * limit)
+          .limit(limit)
+          .populate({ path: "userId", model: User, select: "name image" })
+          .lean(),
+        Template.countDocuments(query),
+      ]);
+
+      const result = {
+        templates,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+
+      const envelope = {
+        data: result,
+        cachedAt: Date.now(),
+      };
+
+      await redis.set(
+        cacheKey,
+        JSON.stringify(envelope),
+        "EX",
+        TEMPLATES_CACHE_TTL,
+      );
+      return result;
+    } catch (e) {
+      console.error("Critical error in fetchAndCacheTemplates", e);
+      throw e;
+    } finally {
+      inFlightTemplateRequests.delete(inFlightKey);
+    }
+  })();
+
+  inFlightTemplateRequests.set(inFlightKey, fetchPromise);
+  return fetchPromise;
 }
 
 async function invalidateTemplatesCache() {
@@ -144,6 +160,18 @@ export async function POST(req: NextRequest) {
     });
 
     await newTemplate.save();
+
+    // Register the brand new ID in the Bloom Filter to keep our cache clean
+    try {
+      await redis.call(
+        "BF.ADD",
+        "template_bloom_filter",
+        newTemplate._id.toString(),
+      );
+    } catch (e: any) {
+      console.warn("Template bloom add failed:", e.message);
+    }
+
     await invalidateTemplatesCache();
 
     return NextResponse.json(newTemplate, { status: 201 });

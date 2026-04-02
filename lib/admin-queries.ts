@@ -11,6 +11,9 @@ const METRICS_CACHE_KEY = "admin_dashboard_metrics";
 const METRICS_CACHE_TTL = 3600; // 1 hour hard limit
 const STALE_THRESHOLD = 300; // 5 minutes revalidation threshold
 
+// In-Memory map for request coalescing against admin queries
+const inFlightAdminMetrics = new Map<string, Promise<AdminMetrics>>();
+
 export type AdminMetrics = {
   totals: {
     users: number;
@@ -102,135 +105,157 @@ export async function getAdminMetrics(
 }
 
 async function generateAndCacheMetrics(): Promise<AdminMetrics> {
-  await connectToDatabase();
-  const now = new Date();
-  const periodStart = new Date(now);
-  periodStart.setDate(periodStart.getDate() - 30);
-
-  const [
-    usersTotal,
-    activeSubs,
-    pastDueSubs,
-    cancelledSubs,
-    cancelledInPeriod,
-    activeSubsByPlan,
-    cancelledPaidInPeriod,
-    createdPaidInPeriod,
-    usageTotals,
-    activeUsers30d,
-    pastDueList,
-  ] = await Promise.all([
-    User.countDocuments(),
-    Subscription.countDocuments({ status: "active" }),
-    Subscription.countDocuments({ status: "past_due" }),
-    Subscription.countDocuments({ status: "cancelled" }),
-    Subscription.countDocuments({
-      status: "cancelled",
-      updatedAt: { $gte: periodStart },
-    }),
-    Subscription.aggregate([
-      { $match: { status: "active" } },
-      { $group: { _id: "$planId", count: { $sum: 1 } } },
-    ]),
-    Subscription.aggregate([
-      {
-        $match: {
-          status: "cancelled",
-          planId: { $ne: "free" },
-          updatedAt: { $gte: periodStart },
-        },
-      },
-      { $group: { _id: "$planId", count: { $sum: 1 } } },
-    ]),
-    Subscription.aggregate([
-      {
-        $match: {
-          planId: { $ne: "free" },
-          createdAt: { $gte: periodStart },
-        },
-      },
-      { $group: { _id: "$planId", count: { $sum: 1 } } },
-    ]),
-    Usage.aggregate([
-      { $group: { _id: null, tokensUsed: { $sum: "$tokensUsed" } } },
-    ]),
-    Usage.countDocuments({ updatedAt: { $gte: periodStart } }),
-    Subscription.find({ status: "past_due" })
-      .sort({ updatedAt: -1 })
-      .limit(10)
-      .populate({ path: "user", model: User, select: "email name" })
-      .lean(),
-  ]);
-
-  const mrr = activeSubsByPlan.reduce((total: number, entry: any) => {
-    return total + safeNumber(PLAN_PRICE_LOOKUP[entry._id]) * entry.count;
-  }, 0);
-
-  const newPaidMRR = createdPaidInPeriod.reduce((total: number, entry: any) => {
-    return total + safeNumber(PLAN_PRICE_LOOKUP[entry._id]) * entry.count;
-  }, 0);
-
-  const cancelledPaidMRR = cancelledPaidInPeriod.reduce(
-    (total: number, entry: any) => {
-      return total + safeNumber(PLAN_PRICE_LOOKUP[entry._id]) * entry.count;
-    },
-    0,
-  );
-
-  const churnBase = Math.max(activeSubs + cancelledInPeriod, 1);
-  const churnRate = cancelledInPeriod === 0 ? 0 : cancelledInPeriod / churnBase;
-
-  const planBreakdown = activeSubsByPlan.map((entry: any) => ({
-    planId: entry._id ?? "unknown",
-    count: entry.count,
-  }));
-
-  const pastDue = (pastDueList as any[]).map((item) => ({
-    subscriptionId: item._id?.toString(),
-    userId: item.user?._id?.toString(),
-    email: item.user?.email,
-    name: item.user?.name,
-    planId: item.planId ?? "free",
-    currentPeriodEnd: item.currentPeriodEnd
-      ? new Date(item.currentPeriodEnd).toISOString()
-      : undefined,
-  }));
-
-  // Cache result for 1 hour to prevent excessive aggregation pressure
-  const result: AdminMetrics = {
-    totals: {
-      users: usersTotal,
-      activeSubscriptions: activeSubs,
-      pastDueSubscriptions: pastDueSubs,
-      cancelledSubscriptions: cancelledSubs,
-      mrr,
-      mrrDelta: newPaidMRR - cancelledPaidMRR,
-      churnRate,
-      tokensUsed: usageTotals?.[0]?.tokensUsed ?? 0,
-      activeUsers30d,
-    },
-    planBreakdown,
-    pastDue,
-  };
-
-  // Wrap in envelope with timestamp for Stale-While-Revalidate
-  const envelope = {
-    metrics: result,
-    cachedAt: Date.now(),
-  };
-
-  try {
-    await redis.set(
-      METRICS_CACHE_KEY,
-      JSON.stringify(envelope),
-      "EX",
-      METRICS_CACHE_TTL,
-    );
-  } catch (e) {
-    logger.error({ err: e }, "Redis metrics cache set failed");
+  // --- CACHE STAMPEDE PREVENTION ---
+  const inFlightKey = "admin_metrics_generation";
+  if (inFlightAdminMetrics.has(inFlightKey)) {
+    return inFlightAdminMetrics.get(inFlightKey)!;
   }
 
-  return result;
+  const fetchPromise = (async () => {
+    try {
+      await connectToDatabase();
+      const now = new Date();
+      const periodStart = new Date(now);
+      periodStart.setDate(periodStart.getDate() - 30);
+
+      const [
+        usersTotal,
+        activeSubs,
+        pastDueSubs,
+        cancelledSubs,
+        cancelledInPeriod,
+        activeSubsByPlan,
+        cancelledPaidInPeriod,
+        createdPaidInPeriod,
+        usageTotals,
+        activeUsers30d,
+        pastDueList,
+      ] = await Promise.all([
+        User.countDocuments(),
+        Subscription.countDocuments({ status: "active" }),
+        Subscription.countDocuments({ status: "past_due" }),
+        Subscription.countDocuments({ status: "cancelled" }),
+        Subscription.countDocuments({
+          status: "cancelled",
+          updatedAt: { $gte: periodStart },
+        }),
+        Subscription.aggregate([
+          { $match: { status: "active" } },
+          { $group: { _id: "$planId", count: { $sum: 1 } } },
+        ]),
+        Subscription.aggregate([
+          {
+            $match: {
+              status: "cancelled",
+              planId: { $ne: "free" },
+              updatedAt: { $gte: periodStart },
+            },
+          },
+          { $group: { _id: "$planId", count: { $sum: 1 } } },
+        ]),
+        Subscription.aggregate([
+          {
+            $match: {
+              planId: { $ne: "free" },
+              createdAt: { $gte: periodStart },
+            },
+          },
+          { $group: { _id: "$planId", count: { $sum: 1 } } },
+        ]),
+        Usage.aggregate([
+          { $group: { _id: null, tokensUsed: { $sum: "$tokensUsed" } } },
+        ]),
+        Usage.countDocuments({ updatedAt: { $gte: periodStart } }),
+        Subscription.find({ status: "past_due" })
+          .sort({ updatedAt: -1 })
+          .limit(10)
+          .populate({ path: "user", model: User, select: "email name" })
+          .lean(),
+      ]);
+
+      const mrr = activeSubsByPlan.reduce((total: number, entry: any) => {
+        return total + safeNumber(PLAN_PRICE_LOOKUP[entry._id]) * entry.count;
+      }, 0);
+
+      const newPaidMRR = createdPaidInPeriod.reduce(
+        (total: number, entry: any) => {
+          return total + safeNumber(PLAN_PRICE_LOOKUP[entry._id]) * entry.count;
+        },
+        0,
+      );
+
+      const cancelledPaidMRR = cancelledPaidInPeriod.reduce(
+        (total: number, entry: any) => {
+          return total + safeNumber(PLAN_PRICE_LOOKUP[entry._id]) * entry.count;
+        },
+        0,
+      );
+
+      const churnBase = Math.max(activeSubs + cancelledInPeriod, 1);
+      const churnRate =
+        cancelledInPeriod === 0 ? 0 : cancelledInPeriod / churnBase;
+
+      const planBreakdown = activeSubsByPlan.map((entry: any) => ({
+        planId: entry._id ?? "unknown",
+        count: entry.count,
+      }));
+
+      const pastDue = (pastDueList as any[]).map((item) => ({
+        subscriptionId: item._id?.toString(),
+        userId: item.user?._id?.toString(),
+        email: item.user?.email,
+        name: item.user?.name,
+        planId: item.planId ?? "free",
+        currentPeriodEnd: item.currentPeriodEnd
+          ? new Date(item.currentPeriodEnd).toISOString()
+          : undefined,
+      }));
+
+      // Cache result for 1 hour to prevent excessive aggregation pressure
+      const result: AdminMetrics = {
+        totals: {
+          users: usersTotal,
+          activeSubscriptions: activeSubs,
+          pastDueSubscriptions: pastDueSubs,
+          cancelledSubscriptions: cancelledSubs,
+          mrr,
+          mrrDelta: newPaidMRR - cancelledPaidMRR,
+          churnRate,
+          tokensUsed: usageTotals?.[0]?.tokensUsed ?? 0,
+          activeUsers30d,
+        },
+        planBreakdown,
+        pastDue,
+      };
+
+      // Wrap in envelope with timestamp for Stale-While-Revalidate
+      const envelope = {
+        metrics: result,
+        cachedAt: Date.now(),
+      };
+
+      try {
+        await redis.set(
+          METRICS_CACHE_KEY,
+          JSON.stringify(envelope),
+          "EX",
+          METRICS_CACHE_TTL,
+        );
+      } catch (e) {
+        logger.error({ err: e }, "Redis metrics cache set failed");
+      } finally {
+        inFlightAdminMetrics.delete("admin_metrics_generation");
+      }
+
+      return result;
+    } catch (error) {
+      inFlightAdminMetrics.delete("admin_metrics_generation");
+      throw error;
+    }
+  })();
+
+  inFlightAdminMetrics.set("admin_metrics_generation", fetchPromise);
+  return fetchPromise;
 }
 
 export async function getAdminUsers(options: {
