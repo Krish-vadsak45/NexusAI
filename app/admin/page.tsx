@@ -1,7 +1,10 @@
 import { headers } from "next/headers";
-import { getAdminContext } from "@/lib/admin";
-import { getAdminMetrics, getAdminUsers } from "@/lib/admin-queries";
-import AdminDashboard from "./AdminDashboard";
+import { getAdminContext } from "@/features/admin/server/admin";
+import {
+  getAdminMetrics,
+  getAdminUsers,
+} from "@/features/admin/server/admin-queries";
+import AdminDashboard from "@/features/admin/components/AdminDashboard";
 
 export default async function AdminPage() {
   const admin = await getAdminContext(await headers());

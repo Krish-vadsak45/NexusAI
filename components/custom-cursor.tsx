@@ -19,7 +19,7 @@ export default function CustomCursor() {
         computedStyle.cursor === "pointer" ||
           target.tagName.toLowerCase() === "button" ||
           target.closest("a") !== null ||
-          target.closest("button") !== null
+          target.closest("button") !== null,
       );
 
       if (!isVisible) setIsVisible(true);

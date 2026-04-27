@@ -1,6 +1,6 @@
 "use client";
 
-import { Footer } from "@/components/footer";
+import { Footer } from "@/features/marketing/components/Footer";
 import { motion, Variants } from "framer-motion";
 import {
   Cpu,
@@ -9,18 +9,14 @@ import {
   ShieldCheck,
   Activity,
   Globe2,
-  Wand2,
   Image as ImageIcon,
   FileText,
   SearchCheck,
   Code2,
-  Lock,
-  MessageSquare,
-  Sparkles,
-  ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import type { ReactNode } from "react";
 
 export default function FeaturesPage() {
   const containerVariants: Variants = {
@@ -262,7 +258,7 @@ function FeatureCard({
   description,
   tags,
 }: {
-  icon: any;
+  icon: ReactNode;
   title: string;
   description: string;
   tags: string[];
@@ -305,7 +301,7 @@ function TechFeature({
   title,
   description,
 }: {
-  icon: any;
+  icon: ReactNode;
   title: string;
   description: string;
 }) {

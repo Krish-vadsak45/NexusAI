@@ -1,12 +1,13 @@
-import mongoose, { Schema, model, models } from "mongoose";
+import { Schema, model, models } from "mongoose";
+import type { UnknownRecord } from "@/lib/shared-types";
 
 export interface IHistory {
   userId: string;
   projectId?: string; // Optional: to associate with a project
   tool: string; // e.g., "ArticleWriter", "TitleGenerator"
   title: string; // A short display title (e.g., the topic)
-  input: any; // The form values used
-  output: any; // The generated result
+  input: UnknownRecord; // The form values used
+  output: unknown; // The generated result
   createdAt: Date;
 }
 
@@ -21,7 +22,7 @@ const historySchema = new Schema<IHistory>(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 const History = models?.History || model<IHistory>("History", historySchema);

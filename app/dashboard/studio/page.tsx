@@ -17,7 +17,6 @@ import {
   User,
   ThumbsUp,
   MessageSquare,
-  MoreHorizontal,
   Calendar,
   Clock,
   Twitter,
@@ -71,8 +70,7 @@ export default function NexusStudioPage() {
         } else {
           setHasAccess(false);
         }
-      } catch (error) {
-        console.error("Failed to check subscription:", error);
+      } catch {
         setHasAccess(false);
       }
     };
@@ -216,9 +214,6 @@ export default function NexusStudioPage() {
           language: "English",
         });
 
-        // Debugging: log the full response
-        console.log("Article Response:", articleRes.data);
-
         // Handle the nested structure { context: { article: "..." } }
         const articleContent =
           articleRes.data.content?.article ||
@@ -250,9 +245,6 @@ export default function NexusStudioPage() {
           length: "Short",
           language: "English",
         });
-
-        // Debugging: log the full response
-        console.log("Social Response:", socialRes.data);
 
         // Handle the nested structure { context: { article: "..." } } -- Note: ArticleWriter returns 'article' field even for social prompt
         const socialContent =
@@ -299,8 +291,7 @@ export default function NexusStudioPage() {
 
       setCurrentStep(6); // Completion
       toast.success("Campaign generated successfully!");
-    } catch (error) {
-      console.error(error);
+    } catch {
       toast.error("Something went wrong during generation. Please try again.");
       setIsGenerating(false);
     } finally {

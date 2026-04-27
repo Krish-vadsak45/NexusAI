@@ -1,35 +1,23 @@
 import { NextResponse } from "next/server";
+import { ValidationError, withApiHandler } from "@/lib/errors";
 import { feedbackSchema } from "@/lib/validations";
 import logger from "@/lib/logger";
 
-export async function POST(req: Request) {
-  try {
-    const body = await req.json();
+export const POST = withApiHandler(async (req: Request) => {
+  const body = await req.json();
+  const result = feedbackSchema.safeParse(body);
 
-    // Server-side validation
-    const result = feedbackSchema.safeParse(body);
-
-    if (!result.success) {
-      return NextResponse.json(
-        { error: "Validation failed", details: result.error.format() },
-        { status: 400 },
-      );
-    }
-
-    // Here you would typically save to a database
-    logger.info({ data: result.data }, "Feedback submission received");
-
-    // Simulate database delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    return NextResponse.json({
-      success: true,
-      message: "Feedback submitted. Thank you!",
+  if (!result.success) {
+    throw new ValidationError("Validation failed", {
+      details: result.error.format(),
     });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
   }
-}
+
+  logger.info({ data: result.data }, "Feedback submission received");
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+
+  return NextResponse.json({
+    success: true,
+    message: "Feedback submitted. Thank you!",
+  });
+});

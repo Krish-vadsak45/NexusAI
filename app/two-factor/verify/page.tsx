@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export default function TwoFactorVerifyPage() {
   const [code, setCode] = useState("");
@@ -15,15 +16,15 @@ export default function TwoFactorVerifyPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { data, error } = await authClient.twoFactor.verifyOtp({
+      const { error } = await authClient.twoFactor.verifyOtp({
         code,
         trustDevice: true, // optional
       });
       if (error) throw new Error(error.message);
       toast.success("2FA verified! You are now signed in.");
       router.push("/"); // or wherever you want to redirect
-    } catch (err: any) {
-      toast.error(err.message || "Invalid or expired code.");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "Invalid or expired code."));
     } finally {
       setLoading(false);
     }

@@ -33,7 +33,6 @@ export function SpinnerLoader({
   size = "md",
   variant = "gradient",
   text,
-  subtext,
   showProgress = false,
   progress = 45,
 }: AdvancedSpinnerLoaderProps) {

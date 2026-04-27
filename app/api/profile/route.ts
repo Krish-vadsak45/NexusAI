@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { requireAuth } from "@/middleware/requireAuth";
 import connectToDatabase from "@/lib/db";
+import logger from "@/lib/logger";
 import { ObjectId } from "mongodb";
 import Subscription from "@/models/Subscription.model";
 
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
   if (!session?.user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
-  console.log("Profile API session user:", session.user);
+  logger.debug({ userId: session.user.id }, "Profile API session resolved");
 
   // Connect to your MongoDB
   const db = await connectToDatabase();

@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/db";
 import { auth } from "@/lib/auth";
-import Project from "@/models/Project.model";
 import { checkProjectMembership } from "@/lib/acl";
+import type {
+  ProjectAccessRecord,
+  ProjectMember,
+  ProjectRole,
+} from "@/lib/shared-types";
 
 export async function PATCH(
   req: NextRequest,
@@ -30,22 +34,23 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   // only owner can change roles
-  if (requester.role !== "owner" && (project as any).userId !== session.user.id)
+  const projectData = project as ProjectAccessRecord;
+  if (requester.role !== "owner" && projectData.userId !== session.user.id)
     return NextResponse.json(
       { error: "Only owner can change roles" },
       { status: 403 },
     );
 
-  const member = (project as any).members?.find(
-    (m: any) => m.userId === userId,
+  const member = projectData.members?.find(
+    (projectMember: ProjectMember) => projectMember.userId === userId,
   );
   if (!member)
     return NextResponse.json({ error: "Member not found" }, { status: 404 });
 
   // prevent demoting the last owner
   if (member.role === "owner" && role !== "owner") {
-    const owners = (project as any).members.filter(
-      (m: any) => m.role === "owner",
+    const owners = (projectData.members || []).filter(
+      (projectMember: ProjectMember) => projectMember.role === "owner",
     );
     if (owners.length <= 1)
       return NextResponse.json(
@@ -54,7 +59,7 @@ export async function PATCH(
       );
   }
 
-  member.role = role;
+  member.role = role as ProjectRole;
   await project.save();
   return NextResponse.json({ success: true, member });
 }
@@ -79,25 +84,25 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   // only owner can remove members
-  if (
-    requester2.role !== "owner" &&
-    (project2 as any).userId !== session.user.id
-  )
+  const projectRecord = project2 as ProjectAccessRecord;
+  if (requester2.role !== "owner" && projectRecord.userId !== session.user.id)
     return NextResponse.json(
       { error: "Only owner can remove members" },
       { status: 403 },
     );
 
-  const memberIndex = (project2 as any).members?.findIndex(
-    (m: any) => m.userId === userId,
+  const memberIndex = projectRecord.members?.findIndex(
+    (projectMember: ProjectMember) => projectMember.userId === userId,
   );
   if (memberIndex === -1 || memberIndex === undefined)
     return NextResponse.json({ error: "Member not found" }, { status: 404 });
 
-  const member = (project2 as any).members[memberIndex];
+  const member = projectRecord.members?.[memberIndex];
+  if (!member)
+    return NextResponse.json({ error: "Member not found" }, { status: 404 });
   if (member.role === "owner") {
-    const owners = (project2 as any).members.filter(
-      (m: any) => m.role === "owner",
+    const owners = (projectRecord.members || []).filter(
+      (projectMember: ProjectMember) => projectMember.role === "owner",
     );
     if (owners.length <= 1)
       return NextResponse.json(
@@ -106,7 +111,7 @@ export async function DELETE(
       );
   }
 
-  (project2 as any).members.splice(memberIndex, 1);
+  projectRecord.members?.splice(memberIndex, 1);
   await project2.save();
   return NextResponse.json({ success: true });
 }

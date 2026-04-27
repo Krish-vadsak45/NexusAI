@@ -5,17 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import {  z } from "zod";
+import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
 import { toast } from "sonner";
-
-type SendOtpOptions = {
-  trustDevice?: boolean;
-  query?: Record<string, any>;
-};
+import { getErrorMessage } from "@/lib/error-utils";
 
 const SignInPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -53,10 +49,9 @@ const SignInPage = () => {
   });
 
   const handleGoogleSignIn = async () => {
-    const data = await authClient.signIn.social({
+    await authClient.signIn.social({
       provider: "google",
     });
-    console.log("social", data);
   };
 
   const onSubmit = async (values: FormData) => {
@@ -74,14 +69,23 @@ const SignInPage = () => {
           },
           {
             onRequest: () => setIsSubmitting(true),
-            onSuccess: async (ctx) => {
+            onSuccess: async () => {
               // Sign in successful, no 2FA required
 
               toast.success("Logged in successfully!");
               router.push("/");
             },
-            onError: (ctx: any) => {
-              const message = ctx?.error?.message ?? "Something went wrong";
+            onError: (ctx: unknown) => {
+              const message =
+                typeof ctx === "object" &&
+                ctx !== null &&
+                "error" in ctx &&
+                typeof ctx.error === "object" &&
+                ctx.error !== null &&
+                "message" in ctx.error &&
+                typeof ctx.error.message === "string"
+                  ? ctx.error.message
+                  : "Something went wrong";
               toast.error(message);
               setError(message);
               setFormError("email", { message });
@@ -92,7 +96,7 @@ const SignInPage = () => {
                 setEmailNotVerified(true);
               }
             },
-          }
+          },
         );
 
       if (credentioalerror) {
@@ -114,7 +118,6 @@ const SignInPage = () => {
         return;
       } else {
         // regular login success
-        console.log("login success", credentioaldata);
         toast.success("Logged in successfully");
         router.push("/");
       }
@@ -122,8 +125,8 @@ const SignInPage = () => {
       //   email: values.email,
       //   callbackURL: "http://localhost:3000",
       // });
-    } catch (err: any) {
-      const message = err?.message ?? "Something went wrong";
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
       setError(message);
       toast.error(message);
       setFormError("email", { message });
@@ -152,8 +155,8 @@ const SignInPage = () => {
       });
       toast.success("Verification code sent to your email.");
       router.push(`/verify-email?email=${encodeURIComponent(email)}`);
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to start verification");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e, "Failed to start verification"));
     } finally {
       setIsSubmitting(false);
     }
@@ -292,7 +295,7 @@ const SignInPage = () => {
               <span className="font-semibold">Continue with Google</span>
             </Button>
             <div className="text-center text-sm mt-6">
-              <span className="text-gray-400">Don't have an account?</span>{" "}
+              <span className="text-gray-400">Don&apos;t have an account?</span>{" "}
               <Link
                 href="/auth/signup"
                 className="underline font-semibold text-blue-400 hover:text-blue-600 transition-all"

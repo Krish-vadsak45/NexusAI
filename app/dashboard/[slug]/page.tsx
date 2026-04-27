@@ -1,13 +1,13 @@
-import { ArticleWriter } from "@/components/ArticleWriter";
-import { BackgroundRemoval } from "@/components/BackgroundRemoval";
-import { CodeGenerator } from "@/components/CodeGenerator";
-import { ImageGeneration } from "@/components/ImageGeneration";
-import { ObjectRemoval } from "@/components/ObjectRemoval";
-import { ResumeReviewer } from "@/components/ResumeReviewer";
-import { TextSummarizer } from "@/components/TextSummarizer";
-import { TitleGenerator } from "@/components/TitleGenerator";
+import { ArticleWriter } from "@/features/ai-tools/components/ArticleWriter";
+import { BackgroundRemoval } from "@/features/ai-tools/components/BackgroundRemoval";
+import { CodeGenerator } from "@/features/ai-tools/components/CodeGenerator";
+import { ImageGeneration } from "@/features/ai-tools/components/ImageGeneration";
+import { ObjectRemoval } from "@/features/ai-tools/components/ObjectRemoval";
+import { ResumeReviewer } from "@/features/ai-tools/components/ResumeReviewer";
+import { TextSummarizer } from "@/features/ai-tools/components/TextSummarizer";
+import { TitleGenerator } from "@/features/ai-tools/components/TitleGenerator";
 import { notFound } from "next/navigation";
-import { VideoRepurposer } from "@/components/VideoRepurposer";
+import { VideoRepurposer } from "@/features/ai-tools/components/VideoRepurposer";
 
 interface PageProps {
   params: Promise<{ slug: string }>;

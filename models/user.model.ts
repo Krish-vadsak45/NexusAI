@@ -32,7 +32,7 @@ const userSchema = new Schema<IUser>(
 
 userSchema.pre(
   "save",
-  function (this: mongoose.Document & IUser, next: (err?: any) => void) {
+  function (this: mongoose.Document & IUser, next: (err?: Error) => void) {
     if (this.isModified("password") && this.password) {
       this.password = bcrypt.hashSync(this.password, 10);
     }

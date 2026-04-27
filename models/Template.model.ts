@@ -5,7 +5,7 @@ import "./Project.model";
 export interface ITemplateVersion {
   version: number;
   content: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   changelog?: string;
   authorId?: mongoose.Types.ObjectId | string;
   createdAt: Date;

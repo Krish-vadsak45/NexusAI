@@ -1,5 +1,5 @@
-import { Pricing } from "@/components/pricing";
-import { Footer } from "@/components/footer";
+import { Pricing } from "@/features/marketing/components/Pricing";
+import { Footer } from "@/features/marketing/components/Footer";
 
 export const metadata = {
   title: "Pricing | NexusAI",

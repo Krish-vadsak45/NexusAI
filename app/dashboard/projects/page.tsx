@@ -40,6 +40,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SpinnerLoader } from "@/components/SpinnerLoader";
+import { getErrorMessage } from "@/lib/error-utils";
 
 // Project Type
 interface Project {
@@ -48,13 +49,6 @@ interface Project {
   description?: string;
   createdAt: string;
   updatedAt: string;
-}
-
-interface PaginationData {
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
 }
 
 // Form Schema
@@ -75,7 +69,6 @@ export default function ProjectsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch] = useDebounce(searchTerm, 500);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [totalCount, setTotalCount] = useState(0);
 
   const {
     register,
@@ -106,10 +99,8 @@ export default function ProjectsPage() {
         }
 
         setNextCursor(response.data.nextCursor);
-        setTotalCount(response.data.total);
-      } catch (error) {
-        console.error("Failed to fetch projects", error);
-        toast.error("Failed to load projects");
+      } catch (error: unknown) {
+        toast.error(getErrorMessage(error, "Failed to load projects"));
       } finally {
         setLoading(false);
       }
@@ -137,9 +128,8 @@ export default function ProjectsPage() {
       setIsDialogOpen(false);
       reset();
       fetchProjects(); // Refresh list
-    } catch (error) {
-      console.error("Failed to create project", error);
-      toast.error("Failed to create project");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Failed to create project"));
     } finally {
       setIsSubmitting(false);
     }

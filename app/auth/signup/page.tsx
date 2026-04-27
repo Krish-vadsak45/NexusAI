@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +46,6 @@ export default function SignupPage() {
     register,
     handleSubmit,
     formState: { errors },
-    setError: setFormError,
     clearErrors,
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -63,22 +63,22 @@ export default function SignupPage() {
     clearErrors();
     setIsSubmitting(true);
     try {
-      const { data, error } = await authClient.signUp.email(
+      await authClient.signUp.email(
         {
           email: values.email,
           name: values.username,
           password: values.password,
           phonenumber: values.phonenumber,
-        } as any,
+        },
         {
-          onRequest: (ctx) => setIsSubmitting(true),
+          onRequest: () => setIsSubmitting(true),
           // Inside onSubmit in your SignupPage
-          onSuccess: (ctx) => {
+          onSuccess: () => {
             toast.success(
-              "Account created! Check your email for the verification code."
+              "Account created! Check your email for the verification code.",
             );
             router.push(
-              `/verify-email?email=${encodeURIComponent(values.email)}`
+              `/verify-email?email=${encodeURIComponent(values.email)}`,
             );
           },
 
@@ -86,11 +86,12 @@ export default function SignupPage() {
             setError(ctx.error.message || "Something went wrong");
             toast.error(ctx.error.message || "Something went wrong");
           },
-        }
+        },
       );
-    } catch (err: any) {
-      setError(err.message || "Something went wrong");
-      toast.error(err.message || "Something went wrong");
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
+      setError(message);
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }

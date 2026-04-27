@@ -7,7 +7,16 @@ import {
 import { v2 as cloudinary } from "cloudinary";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { getErrorMessage } from "@/lib/error-utils";
 import logger from "@/lib/logger";
+
+type CloudinaryUploadResult = {
+  format?: string;
+  height?: number;
+  public_id?: string;
+  secure_url?: string;
+  width?: number;
+};
 
 // Configure Cloudinary
 cloudinary.config({
@@ -70,23 +79,41 @@ export async function POST(req: Request) {
     const buffer = Buffer.from(arrayBuffer);
 
     // Use a promise wrapper for the upload stream
-    const uploadResult: any = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: "background-removal",
-          background_removal: "cloudinary_ai", // Use Cloudinary AI for BG removal
-        },
-        (error: any, result: any) => {
-          if (error) reject(error);
-          else resolve(result);
-        },
-      );
-      uploadStream.end(buffer);
-    });
+    const uploadResult = await new Promise<CloudinaryUploadResult>(
+      (resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: "background-removal",
+            background_removal: "cloudinary_ai", // Use Cloudinary AI for BG removal
+          },
+          (
+            error: Error | undefined,
+            result: CloudinaryUploadResult | undefined,
+          ) => {
+            if (error) {
+              reject(error);
+              return;
+            }
+
+            if (!result?.public_id) {
+              reject(new Error("Cloudinary upload did not return a public ID"));
+              return;
+            }
+
+            resolve(result);
+          },
+        );
+        uploadStream.end(buffer);
+      },
+    );
+    if (!uploadResult.public_id) {
+      throw new Error("Cloudinary upload did not return a public ID");
+    }
+    const publicId = uploadResult.public_id;
 
     // 5. Return the publicId and other details for next-cloudinary
     // We also return the processed URL as a fallback or for direct usage
-    const processedUrl = cloudinary.url(uploadResult.public_id, {
+    const processedUrl = cloudinary.url(publicId, {
       effect: "background_removal",
       secure: true,
       format: "png",
@@ -97,15 +124,15 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       url: processedUrl,
-      publicId: uploadResult.public_id,
+      publicId,
       width: uploadResult.width,
       height: uploadResult.height,
       format: uploadResult.format,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ err: error }, "Background Removal Error");
     return NextResponse.json(
-      { error: error.message || "Internal Server Error" },
+      { error: getErrorMessage(error, "Internal Server Error") },
       { status: 500 },
     );
   }

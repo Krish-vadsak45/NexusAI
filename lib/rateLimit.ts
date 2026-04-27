@@ -104,4 +104,6 @@ export async function resetRateLimit(key: string) {
   inMemoryStore.delete(key);
 }
 
-export default { checkRateLimit, resetRateLimit };
+const rateLimitApi = { checkRateLimit, resetRateLimit };
+
+export default rateLimitApi;

@@ -5,27 +5,35 @@ import Template from "@/models/Template.model";
 import User from "@/models/user.model";
 import { headers } from "next/headers";
 import redis from "@/lib/redisClient";
+import { getErrorMessage } from "@/lib/error-utils";
+import logger from "@/lib/logger";
 
 const TEMPLATES_CACHE_TTL = 3600; // 1 hour
 const TEMPLATES_STALE_THRESHOLD = 300; // 5 minutes
 
 // In-Memory map for request coalescing against template queries
-const inFlightTemplateRequests = new Map<string, Promise<any>>();
+const inFlightTemplateRequests = new Map<string, Promise<unknown>>();
+
+type TemplateSession = {
+  user: {
+    id: string;
+  };
+} | null;
 
 function buildTemplateQuery(
   category: string | null,
   search: string | null,
   filter: string | null,
-  session: any,
+  session: TemplateSession,
 ) {
-  const query: any = {};
+  const query: Record<string, unknown> = {};
 
   if (category) {
     query.category = category;
   }
 
   if (search) {
-    query[""] = { "": search };
+    query.$text = { $search: search };
   }
 
   // Filter logic
@@ -35,13 +43,13 @@ function buildTemplateQuery(
     query.isPublic = true;
   } else {
     // Default: show public OR mine for authenticated users
-    query[""] = [{ isPublic: true }, { userId: session.user.id }];
+    query.$or = [{ isPublic: true }, { userId: session.user.id }];
   }
   return query;
 }
 
 async function fetchAndCacheTemplates(
-  query: any,
+  query: Record<string, unknown>,
   limit: number,
   page: number,
   cacheKey: string,
@@ -88,7 +96,10 @@ async function fetchAndCacheTemplates(
       );
       return result;
     } catch (e) {
-      console.error("Critical error in fetchAndCacheTemplates", e);
+      logger.error(
+        { err: e, cacheKey },
+        "Critical error in fetchAndCacheTemplates",
+      );
       throw e;
     } finally {
       inFlightTemplateRequests.delete(inFlightKey);
@@ -106,7 +117,7 @@ async function invalidateTemplatesCache() {
       await redis.del(...keys);
     }
   } catch (e) {
-    console.error("Failed to invalidate templates cache", e);
+    logger.error({ err: e }, "Failed to invalidate templates cache");
   }
 }
 
@@ -168,16 +179,22 @@ export async function POST(req: NextRequest) {
         "template_bloom_filter",
         newTemplate._id.toString(),
       );
-    } catch (e: any) {
-      console.warn("Template bloom add failed:", e.message);
+    } catch (error: unknown) {
+      logger.warn(
+        { errorMessage: getErrorMessage(error) },
+        "Template bloom add failed",
+      );
     }
 
     await invalidateTemplatesCache();
 
     return NextResponse.json(newTemplate, { status: 201 });
-  } catch (error: any) {
-    console.error("Error creating template:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    logger.error({ err: error }, "Error creating template");
+    return NextResponse.json(
+      { error: getErrorMessage(error, "Failed to create template") },
+      { status: 500 },
+    );
   }
 }
 
@@ -207,7 +224,12 @@ export async function GET(req: NextRequest) {
           TEMPLATES_STALE_THRESHOLD
         ) {
           fetchAndCacheTemplates(query, limit, page, cacheKey).catch(
-            console.error,
+            (error) => {
+              logger.error(
+                { err: error, cacheKey },
+                "Background template refresh failed",
+              );
+            },
           );
         }
         return NextResponse.json(envelope.data);
@@ -216,7 +238,10 @@ export async function GET(req: NextRequest) {
 
     const result = await fetchAndCacheTemplates(query, limit, page, cacheKey);
     return NextResponse.json(result);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { error: getErrorMessage(error, "Failed to load templates") },
+      { status: 500 },
+    );
   }
 }

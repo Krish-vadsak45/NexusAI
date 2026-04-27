@@ -1,23 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminContext } from "@/lib/admin";
 import { getAdminMetrics } from "@/lib/admin-queries";
+import {
+  ForbiddenError,
+  UnauthorizedError,
+  withApiHandler,
+} from "@/lib/errors";
 
-export async function GET(req: NextRequest) {
+export const GET = withApiHandler(async (req: NextRequest) => {
   const admin = await getAdminContext(req.headers);
   if (!admin.ok) {
-    return NextResponse.json({ error: admin.error }, { status: admin.status });
+    throw admin.status === 403
+      ? new ForbiddenError(admin.error)
+      : new UnauthorizedError(admin.error);
   }
 
   const { searchParams } = new URL(req.url);
   const refresh = searchParams.get("refresh") === "true";
 
-  try {
-    const metrics = await getAdminMetrics(refresh);
-    return NextResponse.json(metrics);
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || "Failed to load metrics" },
-      { status: 500 },
-    );
-  }
-}
+  const metrics = await getAdminMetrics(refresh);
+  return NextResponse.json(metrics);
+});

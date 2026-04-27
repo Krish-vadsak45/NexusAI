@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import connectToDatabase from "@/lib/db";
 import { auth } from "@/lib/auth";
-import Project from "@/models/Project.model";
 import { checkProjectMembership } from "@/lib/acl";
 import Invite from "@/models/Invite.model";
 import Notification from "@/models/Notification.model";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
-import { checkRateLimit } from "@/lib/rateLimit";
 import Audit from "@/models/Audit.model";
+import logger from "@/lib/logger";
+import type { ProjectAccessRecord } from "@/lib/shared-types";
 
 export async function POST(
   req: NextRequest,
@@ -68,10 +68,11 @@ export async function POST(
   );
   if (!allowed)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const projectData = project as ProjectAccessRecord;
   if (
     role === "owner" &&
     member?.role !== "owner" &&
-    (project as any).userId !== session.user.id
+    projectData.userId !== session.user.id
   ) {
     return NextResponse.json(
       { error: "Only owner can invite owners" },
@@ -101,7 +102,10 @@ export async function POST(
       data: { inviteId: invite._id, email, role: invite.role },
     });
   } catch (e) {
-    console.warn("audit create failed", e);
+    logger.warn(
+      { err: e, projectId: id },
+      "Audit create failed for invite creation",
+    );
   }
 
   // create an in-app notification record (by email if user not present yet)
@@ -111,14 +115,17 @@ export async function POST(
       type: "invite_sent",
       data: {
         projectId: id,
-        projectName: (project as any).name,
+        projectName: projectData.name,
         role: invite.role,
         invitedBy: session.user.id,
         inviteId: invite._id,
       },
     });
   } catch (nerr) {
-    console.error("notification create failed", nerr);
+    logger.error(
+      { err: nerr, projectId: id, email },
+      "Notification create failed for invite creation",
+    );
   }
 
   // send email if SMTP configured
@@ -151,7 +158,7 @@ export async function POST(
       });
     }
   } catch (e) {
-    console.error("invite email failed", e);
+    logger.error({ err: e, projectId: id, email }, "Invite email failed");
   }
 
   return NextResponse.json(
@@ -232,7 +239,10 @@ export async function DELETE(
       data: { inviteId: invite._id },
     });
   } catch (e) {
-    console.warn("audit create failed", e);
+    logger.warn(
+      { err: e, projectId: id },
+      "Audit create failed for invite cancellation",
+    );
   }
 
   try {
@@ -246,7 +256,10 @@ export async function DELETE(
       },
     });
   } catch (nerr) {
-    console.error("notification create failed", nerr);
+    logger.error(
+      { err: nerr, projectId: id, inviteId },
+      "Notification create failed for invite cancellation",
+    );
   }
 
   return NextResponse.json({ success: true });

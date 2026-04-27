@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export function TwoFactorToggle({
   enabled,
@@ -18,8 +19,6 @@ export function TwoFactorToggle({
   onChange: (val: boolean) => void;
 }) {
   const [loading, setLoading] = useState(false);
-
-  const [isPendingTwoFa, setIsPendingTwoFa] = useState<boolean>(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -107,8 +106,8 @@ export function TwoFactorToggle({
           setDialogOpen(false);
         }
       }
-    } catch (err: any) {
-      setError(err.message || "Something went wrong.");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Something went wrong."));
     } finally {
       setLoading(false);
     }
@@ -159,8 +158,8 @@ export function TwoFactorToggle({
               {loading
                 ? "Processing..."
                 : enabled
-                ? "Disable 2FA"
-                : "Enable 2FA"}
+                  ? "Disable 2FA"
+                  : "Enable 2FA"}
             </Button>
           </div>
           <div className="text-xs text-gray-400 mt-2">

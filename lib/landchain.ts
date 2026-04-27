@@ -1,4 +1,5 @@
 import axios from "axios";
+import logger from "@/lib/logger";
 
 export async function fetchAndExtractPdfText(url: string) {
   try {
@@ -7,11 +8,10 @@ export async function fetchAndExtractPdfText(url: string) {
 
     // Dynamically import to avoid Turbopack/Next.js build-time issues with binary dependencies
     const pdf = (await import("pdf-parse-fork")).default;
-    // @ts-ignore
     const data = await pdf(buffer);
     return data.text || "";
   } catch (error) {
-    console.error("Error extracting PDF text:", error);
+    logger.error({ err: error, url }, "Error extracting PDF text");
     throw error;
   }
 }

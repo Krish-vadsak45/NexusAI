@@ -1,9 +1,15 @@
 import mongoose from "mongoose";
+import type { Connection } from "mongoose";
 
-let cached = (global as any).mongoose;
+type MongooseCache = {
+  conn: Connection | null;
+  promise: Promise<Connection> | null;
+};
+
+let cached: MongooseCache = global.mongoose;
 
 if (!cached) {
-  cached = (global as any).mongoose = { conn: null, promise: null };
+  cached = global.mongoose = { conn: null, promise: null };
 }
 
 export default async function connectToDatabase() {

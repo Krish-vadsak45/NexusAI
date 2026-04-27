@@ -1,10 +1,11 @@
 import { Schema, model, models } from "mongoose";
+import type { UnknownRecord } from "@/lib/shared-types";
 
 export interface INotification {
   userId?: string;
   email?: string;
   type: string; // e.g., 'invite_sent', 'invite_accepted', 'role_changed'
-  data: any;
+  data: UnknownRecord;
   read?: boolean;
   createdAt: Date;
 }

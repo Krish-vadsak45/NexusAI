@@ -310,7 +310,13 @@ export async function recordUsageResult(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
   );
 
-  const update: any = { $inc: { tokens: tokensUsed } };
+  const update: {
+    $inc: {
+      fail?: number;
+      success?: number;
+      tokens: number;
+    };
+  } = { $inc: { tokens: tokensUsed } };
   if (status === "success") update.$inc.success = 1;
   else if (status === "fail") update.$inc.fail = 1;
 
@@ -358,7 +364,7 @@ export async function incrementUsage(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
   );
 
-  const dailyInc: any = {
+  const dailyInc: Record<string, unknown> = {
     count: 1,
     tokens: tokensUsed,
   };

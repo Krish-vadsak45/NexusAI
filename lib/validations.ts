@@ -16,18 +16,20 @@ export const feedbackSchema = z.object({
   category: z.enum(["ui", "performance", "features", "other"], {
     required_error: "Please select a category",
   }),
-  tool: z.enum([
-    "article-writer",
-    "title-generator",
-    "summarizer",
-    "code-generator",
-    "image-generation",
-    "bg-removal",
-    "object-removal",
-    "resume-reviewer",
-    "video-repurposer",
-    "none"
-  ]).optional(),
+  tool: z
+    .enum([
+      "article-writer",
+      "title-generator",
+      "summarizer",
+      "code-generator",
+      "image-generation",
+      "bg-removal",
+      "object-removal",
+      "resume-reviewer",
+      "video-repurposer",
+      "none",
+    ])
+    .optional(),
   feedback: z.string().min(10, "Feedback must be at least 10 characters"),
 });
 

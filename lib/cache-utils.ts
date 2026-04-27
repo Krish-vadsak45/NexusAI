@@ -3,7 +3,7 @@ import redis from "@/lib/redisClient";
 import logger from "@/lib/logger";
 
 // L1 In-Memory Cache (1-second TTL) for hyper-frequent same-instance reads
-const l1Cache = new Map<string, { value: any; expiry: number }>();
+const l1Cache = new Map<string, { value: unknown; expiry: number }>();
 
 export interface CacheOptions {
   ttl: number; // Base TTL in seconds
@@ -46,11 +46,13 @@ export async function getOrSetCache<T>(
         // Return null without hitting Redis L2 or MongoDB.
         return null;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown bloom filter error";
       // If the bloom filter module isn't installed or command fails,
       // we log it once and fall through to standard caching logic.
       logger.debug(
-        { err: error.message, bloomFilterKey, key },
+        { err: errorMessage, bloomFilterKey, key },
         "Bloom filter check skipped/failed",
       );
     }

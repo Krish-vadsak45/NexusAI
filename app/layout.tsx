@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/navbar";
+import Navbar from "@/features/marketing/components/Navbar";
 import NavbarWrapper from "@/components/NavbarWrapper";
 import { Toaster } from "@/components/ui/sonner";
 import Providers from "./components/Providers";
@@ -33,10 +33,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <CustomCursor />
-        <NavbarWrapper>
-          <Navbar />
-        </NavbarWrapper>
-        <Providers>{children}</Providers>
+        <Providers>
+          <NavbarWrapper>
+            <Navbar />
+          </NavbarWrapper>
+          {children}
+        </Providers>
         <Toaster position="top-center" />
       </body>
     </html>

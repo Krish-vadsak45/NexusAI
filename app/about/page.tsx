@@ -1,21 +1,17 @@
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   Check,
-  Code2,
   Globe,
   Heart,
   Shield,
   Sparkles,
   Zap,
   Cpu,
-  Fingerprint,
   MoveRight,
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 
 export default function AboutPage() {
   return (
@@ -50,7 +46,7 @@ export default function AboutPage() {
           </h1>
 
           <p className="mx-auto max-w-2xl text-lg sm:text-xl text-gray-400 mb-12 leading-relaxed">
-            We're a team of researchers, engineers, and artists united by a
+            We&apos;re a team of researchers, engineers, and artists united by a
             single mission: to democratize access to state-of-the-art artificial
             intelligence, making the impossible creative.
           </p>

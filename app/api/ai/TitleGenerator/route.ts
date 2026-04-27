@@ -151,7 +151,7 @@ export async function POST(req: Request) {
 
       return NextResponse.json({ titles: parsedContent.titles });
     } catch (e) {
-      console.error("JSON Parse Error:", e);
+      logger.error({ err: e }, "Title generator JSON parse error");
       await revertFeatureUsage(userId, "title_generator");
       await recordUsageResult(userId, "title_generator", 0, "fail");
       return NextResponse.json(
@@ -160,7 +160,7 @@ export async function POST(req: Request) {
       );
     }
   } catch (error) {
-    console.error("Error in title-generator API:", error);
+    logger.error({ err: error }, "Title generator request failed");
     if (session?.user?.id) {
       await revertFeatureUsage(session.user.id, "title_generator");
       await recordUsageResult(session.user.id, "title_generator", 0, "fail");

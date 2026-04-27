@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import logger from "@/lib/logger";
 import { headers } from "next/headers";
 import { createUploadthing, type FileRouter } from "uploadthing/next";
 
@@ -11,25 +12,29 @@ export const ourFileRouter = {
       maxFileCount: 1,
     },
   })
-    .middleware(async ({ req }) => {
-      console.log("Uploadthing middleware triggered");
+    .middleware(async () => {
       try {
         const session = await auth.api.getSession({
           headers: await headers(),
         });
-        console.log("Session in uploadthing:", !!session);
         if (!session) {
           throw new Error("Unauthorized");
         }
+        logger.debug(
+          { userId: session.user.id },
+          "UploadThing session verified",
+        );
         return { userId: session.user.id };
       } catch (err) {
-        console.error("Uploadthing middleware error:", err);
+        logger.error({ err }, "UploadThing middleware error");
         throw err;
       }
     })
     .onUploadComplete(async ({ metadata, file }) => {
-      console.log("Upload complete for userId:", metadata.userId);
-      console.log("file url", file.ufsUrl);
+      logger.info(
+        { userId: metadata.userId, fileUrl: file.ufsUrl },
+        "UploadThing upload complete",
+      );
       return { uploadedBy: metadata.userId };
     }),
 } satisfies FileRouter;

@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import Project from "@/models/Project.model";
 import connectToDatabase from "@/lib/db";
 import { getOrSetCache, isValidMongoId } from "@/lib/cache-utils";
+import logger from "@/lib/logger";
 import redis from "@/lib/redisClient";
 
 export async function GET(
@@ -51,7 +52,7 @@ export async function GET(
 
     return NextResponse.json(project);
   } catch (error) {
-    console.error("[PROJECT_GET]", error);
+    logger.error({ err: error, projectId: params.id }, "Project fetch failed");
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
@@ -81,7 +82,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: "Project deleted" });
   } catch (error) {
-    console.error("[PROJECT_DELETE]", error);
+    logger.error({ err: error, projectId: params.id }, "Project delete failed");
     return new NextResponse("Internal Error", { status: 500 });
   }
 }

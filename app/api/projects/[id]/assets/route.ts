@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/db";
 import { auth } from "@/lib/auth";
-import Project from "@/models/Project.model";
 import SharedAsset from "@/models/SharedAsset.model";
 import { checkProjectMembership } from "@/lib/acl";
 
@@ -45,7 +44,7 @@ export async function POST(
     );
 
   await connectToDatabase();
-  const { allowed, project, member } = await checkProjectMembership(
+  const { allowed, member } = await checkProjectMembership(
     session.user.id,
     id,
     ["editor"],

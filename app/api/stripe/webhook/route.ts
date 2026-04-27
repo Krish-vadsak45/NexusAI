@@ -6,6 +6,7 @@ import SubscriptionModel from "@/models/Subscription.model";
 import User from "@/models/user.model";
 import connectToDatabase from "@/lib/db";
 import logger from "@/lib/logger";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -19,8 +20,11 @@ export async function POST(req: Request) {
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!,
     );
-  } catch (error: any) {
-    return new NextResponse(`Webhook Error: ${error.message}`, { status: 400 });
+  } catch (error: unknown) {
+    return new NextResponse(
+      `Webhook Error: ${getErrorMessage(error, "Invalid webhook payload")}`,
+      { status: 400 },
+    );
   }
 
   await connectToDatabase();
@@ -52,7 +56,11 @@ export async function POST(req: Request) {
             break; // Skip update if user invalid
           }
 
-          const currentPeriodEnd = (subscription as any).current_period_end;
+          const currentPeriodEnd = (
+            subscription as Stripe.Subscription & {
+              current_period_end?: number;
+            }
+          ).current_period_end;
           await SubscriptionModel.findOneAndUpdate(
             { user: userId },
             {
@@ -73,7 +81,11 @@ export async function POST(req: Request) {
 
       case "invoice.payment_succeeded": {
         const invoice = event.data.object;
-        const subscriptionId = (invoice as any).subscription as string;
+        const subscriptionId = (
+          invoice as Stripe.Invoice & {
+            subscription?: string | Stripe.Subscription;
+          }
+        ).subscription as string;
 
         if (!subscriptionId) {
           break;
@@ -82,7 +94,9 @@ export async function POST(req: Request) {
         const subscription =
           await stripe.subscriptions.retrieve(subscriptionId);
 
-        const currentPeriodEnd = (subscription as any).current_period_end;
+        const currentPeriodEnd = (
+          subscription as Stripe.Subscription & { current_period_end?: number }
+        ).current_period_end;
 
         await SubscriptionModel.findOneAndUpdate(
           { stripeSubscriptionId: subscription.id },
@@ -102,7 +116,9 @@ export async function POST(req: Request) {
         const priceId = subscription.items.data[0].price.id;
         const planId = getPlanIdFromPriceId(priceId);
 
-        const currentPeriodEnd = (subscription as any)?.current_period_end;
+        const currentPeriodEnd = (
+          subscription as Stripe.Subscription & { current_period_end?: number }
+        ).current_period_end;
 
         await SubscriptionModel.findOneAndUpdate(
           { stripeSubscriptionId: subscription.id },

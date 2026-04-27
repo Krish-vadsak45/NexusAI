@@ -4,6 +4,7 @@ import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export default function TwoFactorSend() {
   const [loading, setLoading] = useState(false);
@@ -11,20 +12,20 @@ export default function TwoFactorSend() {
 
   type SendOtpOptions = {
     trustDevice?: boolean;
-    query?: Record<string, any>;
+    query?: Record<string, unknown>;
   };
 
   const handleSendOtp = async () => {
     setLoading(true);
     try {
-      const { data, error } = await authClient.twoFactor.sendOtp({
+      const { error } = await authClient.twoFactor.sendOtp({
         trustDevice: true, // optional
       } as SendOtpOptions);
       if (error) throw new Error(error.message);
       toast.success("OTP sent to your email.");
       router.push("/two-factor/verify");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to send OTP.");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "Failed to send OTP."));
     } finally {
       setLoading(false);
     }

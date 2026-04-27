@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { acceptInvite } from "@/lib/invite";
+import logger from "@/lib/logger";
 import nodemailer from "nodemailer";
 import Invite from "@/models/Invite.model";
 
@@ -14,8 +15,10 @@ export async function POST(req: NextRequest) {
   const result = await acceptInvite(token, session.user);
   // email mismatch -> send verification link to invited email with claim token
   if (result.error === "email_mismatch" && result.claimToken) {
+    let invitedEmail: string | undefined;
     try {
       const invite = await Invite.findOne({ _id: result.inviteId });
+      invitedEmail = invite?.email;
       if (invite && process.env.SMTP_HOST) {
         const transporter = nodemailer.createTransport({
           host: process.env.SMTP_HOST,
@@ -32,7 +35,10 @@ export async function POST(req: NextRequest) {
         });
       }
     } catch (e) {
-      console.error("failed to send claim email", e);
+      logger.error(
+        { err: e, inviteId: result.inviteId, invitedEmail },
+        "Failed to send claim email",
+      );
     }
     return NextResponse.json(
       {

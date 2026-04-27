@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error-utils";
 
 function VerifyEmailContent() {
   const router = useRouter();
@@ -21,7 +22,7 @@ function VerifyEmailContent() {
     setError(null);
     setIsSubmitting(true);
     try {
-      const { data, error: err } = await authClient.emailOtp.verifyEmail({
+      const { error: err } = await authClient.emailOtp.verifyEmail({
         email,
         otp,
       });
@@ -30,9 +31,10 @@ function VerifyEmailContent() {
       }
       toast.success("Email verified! You may now sign in.");
       router.push("/auth/signin");
-    } catch (err: any) {
-      setError(err.message || "Something went wrong");
-      toast.error(err.message || "Something went wrong");
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
+      setError(message);
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }

@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { stripe, PLAN_ID_TO_PRICE_ID } from "@/lib/stripe";
 import Subscription from "@/models/Subscription.model";
 import connectToDatabase from "@/lib/db";
+import logger from "@/lib/logger";
 
 export async function POST(req: Request) {
   try {
@@ -121,10 +122,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ url: checkoutSession.url });
   } catch (error) {
-    console.error("Stripe Checkout Error:", error);
+    logger.error({ err: error }, "Stripe Checkout Error");
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -5,8 +5,13 @@
   body {
     cursor: none;
   }
-  
-  a, button, [role="button"], input, select, textarea {
+
+  a,
+  button,
+  [role="button"],
+  input,
+  select,
+  textarea {
     cursor: none;
   }
 }

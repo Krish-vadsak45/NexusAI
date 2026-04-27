@@ -1,11 +1,12 @@
 import { Schema, model, models } from "mongoose";
+import type { UnknownRecord } from "@/lib/shared-types";
 
 export interface ISharedAsset {
   projectId: string;
   createdBy: string;
   title?: string;
   type: string; // e.g., "template", "prompt"
-  content: any;
+  content: string | UnknownRecord;
   visibility: "project" | "private" | "public";
   version: number;
   forkable?: boolean;

@@ -7,6 +7,7 @@ import {
 import axios from "axios";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { getErrorMessage } from "@/lib/error-utils";
 import logger from "@/lib/logger";
 
 export async function POST(req: Request) {
@@ -122,7 +123,7 @@ export async function POST(req: Request) {
     const contentsPart = [{ text: promptText }];
     if (fileUri) {
       contentsPart.push({
-        // @ts-ignore
+        // @ts-expect-error Gemini file parts are broader than the inferred literal type here.
         file_data: { mime_type: "video/mp4", file_uri: fileUri },
       });
     }
@@ -167,13 +168,10 @@ export async function POST(req: Request) {
     await recordUsageResult(session.user.id, "video_repurposer", 1, "success");
 
     return NextResponse.json({ content: parsedContent });
-  } catch (error: any) {
-    logger.error(
-      { err: error.response?.data || error.message },
-      "Video Repurposer Error",
-    );
+  } catch (error: unknown) {
+    logger.error({ err: error }, "Video Repurposer Error");
     return NextResponse.json(
-      { error: "Internal Server Error" },
+      { error: getErrorMessage(error, "Internal Server Error") },
       { status: 500 },
     );
   }

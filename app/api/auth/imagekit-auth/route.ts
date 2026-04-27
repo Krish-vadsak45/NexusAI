@@ -1,5 +1,6 @@
 // File: app/api/upload-auth/route.ts
 import { getUploadAuthParams } from "@imagekit/next/server";
+import logger from "@/lib/logger";
 
 export async function GET() {
   try {
@@ -13,10 +14,13 @@ export async function GET() {
       publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
     });
   } catch (error) {
-    console.error("Error generating authentication parameters:", error);
+    logger.error(
+      { err: error },
+      "Error generating ImageKit authentication parameters",
+    );
     return Response.json(
       { error: "Failed to generate authentication parameters" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

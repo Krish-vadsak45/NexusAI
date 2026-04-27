@@ -5,6 +5,17 @@ import Notification from "@/models/Notification.model";
 import User from "@/models/user.model";
 import Invite from "@/models/Invite.model";
 
+type NotificationUserSummary = {
+  _id: string;
+  email: string;
+  name?: string;
+};
+
+type InviteStatusSummary = {
+  _id: string;
+  status: "pending" | "claimed" | "revoked" | "declined";
+};
+
 export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session)
@@ -27,7 +38,7 @@ export async function GET(req: NextRequest) {
 
   await connectToDatabase();
 
-  const query: any = {
+  const query: Record<string, unknown> = {
     $or: [{ userId: session.user.id }, { email: session.user.email }],
   };
 
@@ -54,17 +65,21 @@ export async function GET(req: NextRequest) {
   });
 
   const [users, invites] = await Promise.all([
-    User.find({ _id: { $in: Array.from(userIds) } }).lean(),
-    Invite.find({ _id: { $in: Array.from(inviteIds) } }).lean(),
+    User.find({ _id: { $in: Array.from(userIds) } })
+      .select("_id name email")
+      .lean<NotificationUserSummary[]>(),
+    Invite.find({ _id: { $in: Array.from(inviteIds) } })
+      .select("_id status")
+      .lean<InviteStatusSummary[]>(),
   ]);
 
   const usersMap: Record<string, string> = {};
-  users.forEach((u: any) => {
+  users.forEach((u) => {
     usersMap[String(u._id)] = u.name || u.email;
   });
 
   const invitesMap: Record<string, string> = {};
-  invites.forEach((iv: any) => {
+  invites.forEach((iv) => {
     invitesMap[String(iv._id)] = iv.status;
   });
 

@@ -6,8 +6,17 @@ import {
   recordUsageResult,
 } from "@/middleware/usage";
 import { v2 as cloudinary } from "cloudinary";
+import { getErrorMessage } from "@/lib/error-utils";
 import { headers } from "next/headers";
 import logger from "@/lib/logger";
+
+type CloudinaryUploadResult = {
+  format?: string;
+  height?: number;
+  public_id?: string;
+  secure_url?: string;
+  width?: number;
+};
 
 // Configure Cloudinary
 cloudinary.config({
@@ -63,16 +72,27 @@ export async function POST(req: Request) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    const uploadResult: any = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        { folder: "object-removal" },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        },
-      );
-      uploadStream.end(buffer);
-    });
+    const uploadResult = await new Promise<CloudinaryUploadResult>(
+      (resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          { folder: "object-removal" },
+          (error, result: CloudinaryUploadResult | undefined) => {
+            if (error) {
+              reject(error);
+              return;
+            }
+
+            if (!result?.public_id || !result.secure_url) {
+              reject(new Error("Cloudinary upload did not return image data"));
+              return;
+            }
+
+            resolve(result);
+          },
+        );
+        uploadStream.end(buffer);
+      },
+    );
 
     // We increment the feature count (handled inside checkAndIncrementUsage) and add token cost
     await recordUsageResult(userId, "object_removal", 5000, "success");
@@ -84,14 +104,14 @@ export async function POST(req: Request) {
       height: uploadResult.height,
       format: uploadResult.format,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ err: error }, "Object Removal Error");
     if (session?.user?.id) {
       await revertFeatureUsage(session.user.id, "object_removal");
       await recordUsageResult(session.user.id, "object_removal", 0, "fail");
     }
     return NextResponse.json(
-      { error: error.message || "Internal Server Error" },
+      { error: getErrorMessage(error, "Internal Server Error") },
       { status: 500 },
     );
   }

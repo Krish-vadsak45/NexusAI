@@ -8,6 +8,7 @@ import axios from "axios";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import mammoth from "mammoth";
+import { getErrorMessage } from "@/lib/error-utils";
 import { fetchAndExtractPdfText } from "@/lib/landchain";
 import logger from "@/lib/logger";
 
@@ -83,7 +84,7 @@ export async function POST(req: Request) {
         // Try to parse as text first
         try {
           resumeText = buffer.toString("utf-8");
-        } catch (e) {
+        } catch {
           return NextResponse.json(
             { error: "Unsupported file type" },
             { status: 400 },
@@ -153,7 +154,7 @@ export async function POST(req: Request) {
     );
 
     if (response.status !== 200) {
-      console.error("Gemini API Error:", response.data);
+      logger.error({ err: response.data }, "Gemini API Error");
       await revertFeatureUsage(userId, "resume_reviewer");
       await recordUsageResult(userId, "resume_reviewer", 0, "fail");
       return NextResponse.json(
@@ -179,7 +180,7 @@ export async function POST(req: Request) {
       analysisResult = JSON.parse(generatedText);
       await recordUsageResult(userId, "resume_reviewer", 1, "success");
     } catch (e) {
-      console.error("JSON Parse Error:", e);
+      logger.error({ err: e }, "Resume reviewer JSON parse error");
       await revertFeatureUsage(userId, "resume_reviewer");
       await recordUsageResult(userId, "resume_reviewer", 0, "fail");
       return NextResponse.json(
@@ -189,14 +190,14 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(analysisResult);
-  } catch (error: any) {
-    console.error("Resume Reviewer Error:", error);
+  } catch (error: unknown) {
+    logger.error({ err: error }, "Resume reviewer request failed");
     if (session?.user?.id) {
       await revertFeatureUsage(session.user.id, "resume_reviewer");
       await recordUsageResult(session.user.id, "resume_reviewer", 0, "fail");
     }
     return NextResponse.json(
-      { error: error.message || "Internal Server Error" },
+      { error: getErrorMessage(error, "Internal Server Error") },
       { status: 500 },
     );
   }

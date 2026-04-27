@@ -9,15 +9,11 @@ import { CldImage } from "next-cloudinary";
 import { useState } from "react";
 import { toast } from "sonner";
 import axios from "axios";
-
-interface HistoryItem {
-  _id: string;
-  tool: string;
-  title: string;
-  createdAt: string;
-  input: any;
-  output: any;
-}
+import type {
+  HistoryItem,
+  TitleSuggestion,
+  UnknownRecord,
+} from "@/lib/shared-types";
 
 interface HistoryItemRendererProps {
   item: HistoryItem;
@@ -25,6 +21,8 @@ interface HistoryItemRendererProps {
 
 export function HistoryItemRenderer({ item }: HistoryItemRendererProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const input = item.input as UnknownRecord;
+  const stringOutput = typeof item.output === "string" ? item.output : "";
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -35,7 +33,7 @@ export function HistoryItemRenderer({ item }: HistoryItemRendererProps) {
 
   const handleDownload = async (url: string, filename: string) => {
     try {
-      const response = await axios.get(url, { responseType: 'blob' });
+      const response = await axios.get(url, { responseType: "blob" });
       const blob = response.data;
       const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -46,13 +44,13 @@ export function HistoryItemRenderer({ item }: HistoryItemRendererProps) {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
       toast.success("Downloaded successfully");
-    } catch (error) {
-      console.error("Download failed:", error);
+    } catch {
       toast.error("Failed to download");
     }
   };
 
   if (item.tool === "Article Writer") {
+    const output = item.output as { article?: string };
     return (
       <div className="relative group">
         <div className="absolute right-4 top-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -60,7 +58,7 @@ export function HistoryItemRenderer({ item }: HistoryItemRendererProps) {
             variant="outline"
             size="icon"
             className="mt-2 mr-2 bg-background/80 backdrop-blur-sm"
-            onClick={() => handleCopy(item.output.article, item._id)}
+            onClick={() => handleCopy(output.article || "", item._id)}
           >
             {copiedId === item._id ? (
               <Check className="h-4 w-4 text-green-500" />
@@ -70,13 +68,16 @@ export function HistoryItemRenderer({ item }: HistoryItemRendererProps) {
           </Button>
         </div>
         <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none bg-background p-8 rounded-xl border shadow-sm">
-          <ReactMarkdown>{item.output.article || ""}</ReactMarkdown>
+          <ReactMarkdown>{output.article || ""}</ReactMarkdown>
         </div>
       </div>
     );
   } else if (item.tool === "Image Generation") {
-    const imageUrl =
-      typeof item.output === "string" ? item.output : item.output.url;
+    const output =
+      typeof item.output === "string"
+        ? item.output
+        : (item.output as { url?: string }).url || "";
+    const imageUrl = output;
     return (
       <div className="group relative aspect-square w-full max-w-md mx-auto rounded-xl overflow-hidden border shadow-sm bg-muted">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -97,36 +98,38 @@ export function HistoryItemRenderer({ item }: HistoryItemRendererProps) {
       </div>
     );
   } else if (item.tool === "Title Generator") {
+    const titles = Array.isArray(item.output)
+      ? (item.output as TitleSuggestion[])
+      : [];
     return (
       <ul className="grid gap-3 sm:grid-cols-2">
-        {Array.isArray(item.output) &&
-          item.output.map((title: any, idx: number) => (
-            <li
-              key={idx}
-              className="group p-4 bg-background rounded-xl border shadow-sm flex items-start justify-between gap-3 hover:border-primary/50 transition-colors cursor-pointer"
-              onClick={() => handleCopy(title.title, `${item._id}-${idx}`)}
+        {titles.map((title, idx) => (
+          <li
+            key={idx}
+            className="group p-4 bg-background rounded-xl border shadow-sm flex items-start justify-between gap-3 hover:border-primary/50 transition-colors cursor-pointer"
+            onClick={() => handleCopy(title.title, `${item._id}-${idx}`)}
+          >
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary mt-0.5">
+                {idx + 1}
+              </span>
+              <span className="font-medium leading-tight text-foreground/90">
+                {title.title}
+              </span>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity -mt-1 -mr-2"
             >
-              <div className="flex items-start gap-3">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary mt-0.5">
-                  {idx + 1}
-                </span>
-                <span className="font-medium leading-tight text-foreground/90">
-                  {title.title}
-                </span>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity -mt-1 -mr-2"
-              >
-                {copiedId === `${item._id}-${idx}` ? (
-                  <Check className="h-4 w-4 text-green-500" />
-                ) : (
-                  <Copy className="h-4 w-4 text-muted-foreground" />
-                )}
-              </Button>
-            </li>
-          ))}
+              {copiedId === `${item._id}-${idx}` ? (
+                <Check className="h-4 w-4 text-green-500" />
+              ) : (
+                <Copy className="h-4 w-4 text-muted-foreground" />
+              )}
+            </Button>
+          </li>
+        ))}
       </ul>
     );
   } else if (item.tool === "Code Generator") {
@@ -135,13 +138,18 @@ export function HistoryItemRenderer({ item }: HistoryItemRendererProps) {
         <div className="relative rounded-xl border overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2 bg-muted border-b">
             <span className="text-xs font-medium text-muted-foreground font-mono">
-              generated_code.{item.input.language || "txt"}
+              generated_code.{String(input.language || "txt")}
             </span>
             <Button
               variant="ghost"
               size="sm"
               className="h-8 gap-2 text-xs"
-              onClick={() => handleCopy(item.output.code, item._id)}
+              onClick={() =>
+                handleCopy(
+                  (item.output as { code?: string }).code || "",
+                  item._id,
+                )
+              }
             >
               {copiedId === item._id ? (
                 <Check className="h-3.5 w-3.5 text-green-500" />
@@ -152,7 +160,7 @@ export function HistoryItemRenderer({ item }: HistoryItemRendererProps) {
             </Button>
           </div>
           <SyntaxHighlighter
-            language={(item.input.language || "javascript").toLowerCase()}
+            language={String(input.language || "javascript").toLowerCase()}
             style={atomDark}
             customStyle={{
               margin: 0,
@@ -163,18 +171,18 @@ export function HistoryItemRenderer({ item }: HistoryItemRendererProps) {
             wrapLines={true}
             showLineNumbers={true}
           >
-            {item.output.code}
+            {(item.output as { code?: string }).code || ""}
           </SyntaxHighlighter>
         </div>
 
-        {item.output.explanation && (
+        {(item.output as { explanation?: string }).explanation && (
           <div className="bg-blue-50/50 dark:bg-blue-950/20 p-6 rounded-xl border border-blue-100 dark:border-blue-900/50">
             <h4 className="flex items-center gap-2 text-sm font-semibold text-blue-700 dark:text-blue-400 mb-3">
               <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
               Explanation & Logic
             </h4>
             <p className="text-sm text-blue-600/90 dark:text-blue-300/90 leading-relaxed">
-              {item.output.explanation}
+              {(item.output as { explanation?: string }).explanation}
             </p>
           </div>
         )}
@@ -187,7 +195,7 @@ export function HistoryItemRenderer({ item }: HistoryItemRendererProps) {
           variant="ghost"
           size="icon"
           className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={() => handleCopy(item.output, item._id)}
+          onClick={() => handleCopy(stringOutput, item._id)}
         >
           {copiedId === item._id ? (
             <Check className="h-4 w-4 text-green-500" />
@@ -199,68 +207,62 @@ export function HistoryItemRenderer({ item }: HistoryItemRendererProps) {
           Summary
         </h4>
         <p className="text-sm leading-relaxed text-foreground/90">
-          {item.output}
+          {stringOutput}
         </p>
-      </div>
-    );
-  } else if (item.tool === "Image Generation") {
-    return (
-      <div className="group relative aspect-square w-full max-w-md mx-auto rounded-xl overflow-hidden border shadow-sm bg-muted/20">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={item.output}
-          alt={item.title}
-          className="object-contain w-full h-full"
-        />
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => handleDownload(item.output, "generated-image.png")}
-          >
-            <Download className="h-4 w-4 mr-2" /> Download
-          </Button>
-        </div>
       </div>
     );
   } else if (
     item.tool === "Background Removal" ||
     item.tool === "Object Removal"
   ) {
-    const isCloudinary = !!item.output.publicId;
+    const output = item.output as UnknownRecord & {
+      mode?: string;
+      objectDescription?: string;
+      prompt?: string;
+      publicId?: string;
+      replaceWith?: string;
+      url?: string;
+    };
+    const publicId =
+      typeof output.publicId === "string" ? output.publicId : null;
+    const isCloudinary = publicId !== null;
+    const backgroundPrompt =
+      output.mode === "replace" && typeof output.prompt === "string"
+        ? output.prompt
+        : undefined;
+    const removeTarget =
+      output.mode === "remove" && typeof output.objectDescription === "string"
+        ? output.objectDescription
+        : undefined;
+    const replaceTargets =
+      output.mode === "replace" &&
+      typeof output.objectDescription === "string" &&
+      typeof output.replaceWith === "string"
+        ? [output.objectDescription, output.replaceWith]
+        : undefined;
     return (
       <div className="group relative aspect-video w-full max-w-2xl mx-auto rounded-xl overflow-hidden border shadow-sm bg-[url('https://media.istockphoto.com/id/1226478932/vector/checkered-transparent-background-vector-seamless-pattern.jpg?s=612x612&w=0&k=20&c=O_70rQ835194uX2b_coI3Xj8jD7D9Kq_zSc8Jg6_z9E=')] bg-repeat">
         {isCloudinary ? (
           <CldImage
-            src={item.output.publicId}
+            src={publicId}
             alt={item.title}
             fill
             className="object-contain"
             removeBackground={
-              item.tool === "Background Removal" &&
-              item.output.mode === "remove"
+              item.tool === "Background Removal" && output.mode === "remove"
             }
             replaceBackground={
-              item.tool === "Background Removal" &&
-              item.output.mode === "replace"
-                ? item.output.prompt
-                : undefined
+              item.tool === "Background Removal" ? backgroundPrompt : undefined
             }
-            remove={
-              item.tool === "Object Removal" && item.output.mode === "remove"
-                ? item.output.objectDescription
-                : undefined
-            }
+            remove={item.tool === "Object Removal" ? removeTarget : undefined}
             replace={
-              item.tool === "Object Removal" && item.output.mode === "replace"
-                ? [item.output.objectDescription, item.output.replaceWith]
-                : undefined
+              item.tool === "Object Removal" ? replaceTargets : undefined
             }
           />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={item.output.url}
+            src={output.url || ""}
             alt={item.title}
             className="object-contain w-full h-full"
           />
@@ -271,7 +273,7 @@ export function HistoryItemRenderer({ item }: HistoryItemRendererProps) {
               variant="secondary"
               size="sm"
               onClick={() =>
-                handleDownload(item.output.url, "edited-image.png")
+                handleDownload(output.url || "", "edited-image.png")
               }
             >
               <Download className="h-4 w-4 mr-2" /> Download
@@ -281,13 +283,19 @@ export function HistoryItemRenderer({ item }: HistoryItemRendererProps) {
       </div>
     );
   } else if (item.tool === "Resume Reviewer") {
+    const output = item.output as {
+      score?: number;
+      strengths?: string[];
+      summary?: string;
+      weaknesses?: string[];
+    };
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-6 p-6 bg-gradient-to-br from-background to-muted/20 rounded-xl border shadow-sm">
           <div className="relative flex items-center justify-center w-24 h-24 rounded-full border-8 border-primary/20">
             <div className="flex flex-col items-center">
               <span className="text-3xl font-bold text-primary">
-                {item.output.score}
+                {output.score ?? 0}
               </span>
               <span className="text-[10px] uppercase font-bold text-muted-foreground">
                 Score
@@ -299,7 +307,7 @@ export function HistoryItemRenderer({ item }: HistoryItemRendererProps) {
               AI Analysis Summary
             </h4>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              {item.output.summary}
+              {output.summary ?? ""}
             </p>
           </div>
         </div>
@@ -311,7 +319,7 @@ export function HistoryItemRenderer({ item }: HistoryItemRendererProps) {
               Strengths
             </h4>
             <ul className="space-y-3">
-              {item.output.strengths?.map((s: string, i: number) => (
+              {(output.strengths || []).map((s: string, i: number) => (
                 <li
                   key={i}
                   className="flex items-start gap-2 text-sm text-green-700/90 dark:text-green-300"
@@ -330,7 +338,7 @@ export function HistoryItemRenderer({ item }: HistoryItemRendererProps) {
               Weaknesses
             </h4>
             <ul className="space-y-3">
-              {item.output.weaknesses?.map((s: string, i: number) => (
+              {(output.weaknesses || []).map((s: string, i: number) => (
                 <li
                   key={i}
                   className="flex items-start gap-2 text-sm text-red-700/90 dark:text-red-300"
@@ -352,7 +360,7 @@ export function HistoryItemRenderer({ item }: HistoryItemRendererProps) {
             variant="outline"
             size="icon"
             className="mt-2 mr-2 bg-background/80 backdrop-blur-sm"
-            onClick={() => handleCopy(item.output, item._id)}
+            onClick={() => handleCopy(stringOutput, item._id)}
           >
             {copiedId === item._id ? (
               <Check className="h-4 w-4 text-green-500" />
@@ -362,7 +370,7 @@ export function HistoryItemRenderer({ item }: HistoryItemRendererProps) {
           </Button>
         </div>
         <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none bg-background p-8 rounded-xl border shadow-sm">
-          <ReactMarkdown>{item.output || ""}</ReactMarkdown>
+          <ReactMarkdown>{stringOutput}</ReactMarkdown>
         </div>
       </div>
     );

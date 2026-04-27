@@ -1,11 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import connectToDatabase from "@/lib/db";
-import Template, { ITemplate } from "@/models/Template.model";
+import Template from "@/models/Template.model";
 import User from "@/models/user.model";
 import { headers } from "next/headers";
 import { getOrSetCache, isValidMongoId } from "@/lib/cache-utils";
+import { getErrorMessage } from "@/lib/error-utils";
 import redis from "@/lib/redisClient";
+
+type PopulatedTemplateUser = {
+  _id?: string;
+  toString(): string;
+};
+
+type TemplateResponseRecord = {
+  _id?: string;
+  category: string;
+  createdAt?: Date;
+  currentVersion: number;
+  description?: string;
+  forkedFrom?: string;
+  isPublic: boolean;
+  projectId?: string;
+  ratingCount: number;
+  ratingSum: number;
+  tags: string[];
+  title: string;
+  updatedAt?: Date;
+  userId?: string | PopulatedTemplateUser;
+};
 
 // GET single template
 export async function GET(
@@ -21,7 +44,7 @@ export async function GET(
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
     }
 
-    const templateData = await getOrSetCache<any>(
+    const templateData = await getOrSetCache<TemplateResponseRecord>(
       `template_data:${id}`,
       async () => {
         // High-Value Strategy: Exclude heavy versions from detail view to save Redis memory.
@@ -32,7 +55,7 @@ export async function GET(
             model: User,
             select: "name image",
           })
-          .lean();
+          .lean<TemplateResponseRecord | null>();
       },
       {
         ttl: 3600, // 1 hour (High Value)
@@ -43,27 +66,31 @@ export async function GET(
       },
     );
 
-    if (!templateData || Array.isArray(templateData)) {
+    if (!templateData) {
       return NextResponse.json(
         { error: "Template not found" },
         { status: 404 },
       );
     }
 
-    const template = templateData as any;
-
     // Visibility check
     const templateUserId =
-      template.userId?._id?.toString() || template.userId?.toString();
+      typeof templateData.userId === "string"
+        ? templateData.userId
+        : templateData.userId?._id?.toString() ||
+          templateData.userId?.toString();
     const isOwner = session?.user?.id === templateUserId;
 
-    if (!template.isPublic && !isOwner) {
+    if (!templateData.isPublic && !isOwner) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    return NextResponse.json(template);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(templateData);
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { error: getErrorMessage(error, "Failed to load template") },
+      { status: 500 },
+    );
   }
 }
 
@@ -108,8 +135,11 @@ export async function PUT(
     await redis.del(`template_data:${id}`);
 
     return NextResponse.json(template);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { error: getErrorMessage(error, "Failed to update template") },
+      { status: 500 },
+    );
   }
 }
 
@@ -145,7 +175,10 @@ export async function DELETE(
     await redis.del(`template_data:${id}`);
 
     return NextResponse.json({ message: "Template deleted" });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { error: getErrorMessage(error, "Failed to delete template") },
+      { status: 500 },
+    );
   }
 }

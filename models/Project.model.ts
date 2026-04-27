@@ -10,7 +10,7 @@ export interface IProject {
     invitedBy?: string;
     inviteStatus: "accepted" | "pending" | "declined";
     joinedAt: Date;
-    permissionsOverrides?: Record<string, any>;
+    permissionsOverrides?: Record<string, unknown>;
   }[];
   createdAt: Date;
   updatedAt: Date;

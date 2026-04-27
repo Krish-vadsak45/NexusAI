@@ -1,35 +1,31 @@
 "use client"; // This component must be a client component
 
-import {
-  ImageKitAbortError,
-  ImageKitInvalidRequestError,
-  ImageKitServerError,
-  ImageKitUploadNetworkError,
-  upload,
-} from "@imagekit/next";
-import { useRef, useState } from "react";
+import { upload } from "@imagekit/next";
+import type { UploadResponse } from "@imagekit/next";
+import { useState } from "react";
 import axios from "axios";
+import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error-utils";
 
 interface FileUploadProps {
-  onSuccess: (res: any) => void;
+  onSuccess: (res: UploadResponse) => void;
   onProgress?: (progress: number) => void;
   fileType?: "image" | "video";
 }
 
 const FileUpload = ({ onSuccess, onProgress, fileType }: FileUploadProps) => {
   const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   //optional validation
 
   const validateFile = (file: File) => {
     if (fileType === "video") {
       if (!file.type.startsWith("video/")) {
-        setError("Please upload a valid video file");
+        return false;
       }
     }
     if (file.size > 100 * 1024 * 1024) {
-      setError("File size must be less than 100 MB");
+      return false;
     }
     return true;
   };
@@ -40,7 +36,6 @@ const FileUpload = ({ onSuccess, onProgress, fileType }: FileUploadProps) => {
     if (!file || !validateFile(file)) return;
 
     setUploading(true);
-    setError(null);
 
     try {
       const authRes = await axios.get("/api/auth/imagekit-auth");
@@ -61,8 +56,8 @@ const FileUpload = ({ onSuccess, onProgress, fileType }: FileUploadProps) => {
         },
       });
       onSuccess(res);
-    } catch (error) {
-      console.error("Upload failed", error);
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Upload failed"));
     } finally {
       setUploading(false);
     }

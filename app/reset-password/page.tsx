@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error-utils";
 
 function ResetPasswordContent() {
   const router = useRouter();
@@ -21,7 +22,7 @@ function ResetPasswordContent() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const { data, error } = await authClient.emailOtp.resetPassword({
+      const { error } = await authClient.emailOtp.resetPassword({
         email,
         otp,
         password,
@@ -29,8 +30,8 @@ function ResetPasswordContent() {
       if (error) throw new Error(error.message);
       toast.success("Password reset successful! You may now sign in.");
       router.push("/auth/signin");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to reset password.");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "Failed to reset password."));
     } finally {
       setIsSubmitting(false);
     }

@@ -13,8 +13,10 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { TwoFactorToggle } from "@/components/TwoFactorToggle";
 import axios from "axios";
-import { ManageSubscriptionButton } from "@/components/ManageSubscriptionButton";
+import { ManageSubscriptionButton } from "@/features/billing/components/ManageSubscriptionButton";
 import { Badge } from "@/components/ui/badge";
+import Image from "next/image";
+import { getErrorMessage } from "@/lib/error-utils";
 import {
   User,
   Mail,
@@ -26,8 +28,29 @@ import {
   XCircle,
 } from "lucide-react";
 
+type ProfileSubscription = {
+  currentPeriodEnd?: string | Date;
+  planId?: string;
+  status?: string;
+};
+
+type ProfileUser = {
+  authProvider?: string;
+  email?: string;
+  emailVerified?: boolean;
+  id?: string;
+  image?: string;
+  name?: string;
+  phonenumber?: string;
+  provider?: string;
+  role?: string;
+  subscription?: ProfileSubscription | null;
+  twoFactorEnabled?: boolean;
+  username?: string;
+};
+
 export default function ProfilePage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<ProfileUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,13 +59,9 @@ export default function ProfilePage() {
       try {
         const res = await axios.get("/api/profile");
         const data = res.data;
-        console.log("Profile API session user:", data);
         setUser(data.user ?? data);
-      } catch (err: any) {
-        const msg =
-          err?.response?.data?.message ||
-          err?.message ||
-          "Failed to load user info";
+      } catch (err: unknown) {
+        const msg = getErrorMessage(err, "Failed to load user info");
         toast.error(msg);
       } finally {
         setLoading(false);
@@ -74,9 +93,11 @@ export default function ProfilePage() {
         <div className="flex flex-col md:flex-row items-center gap-6 p-6 rounded-2xl bg-card border shadow-sm">
           <div className="relative">
             {user.image ? (
-              <img
-                src={user.image}
+              <Image
+                src={String(user.image)}
                 alt="Profile"
+                width={96}
+                height={96}
                 className="w-24 h-24 rounded-full border-4 border-background shadow-md object-cover"
               />
             ) : (
@@ -229,7 +250,7 @@ export default function ProfilePage() {
                       </span>
                       <span className="text-xs font-medium">
                         {new Date(
-                          user.subscription.currentPeriodEnd
+                          user.subscription.currentPeriodEnd,
                         ).toLocaleDateString()}
                       </span>
                     </div>
@@ -252,7 +273,7 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent>
                 <TwoFactorToggle
-                  enabled={user.twoFactorEnabled}
+                  enabled={user.twoFactorEnabled ?? false}
                   onChange={(val) =>
                     setUser({ ...user, twoFactorEnabled: val })
                   }

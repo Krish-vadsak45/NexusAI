@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/db";
 import { auth } from "@/lib/auth";
-import Project from "@/models/Project.model";
 import User from "@/models/user.model";
 import { checkProjectMembership } from "@/lib/acl";
+import logger from "@/lib/logger";
+import type { ProjectAccessRecord, ProjectMember } from "@/lib/shared-types";
 
 export async function GET(
   req: NextRequest,
@@ -30,7 +31,8 @@ export async function GET(
   if (!allowed)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const allMembers = (project as any).members || [];
+  const projectData = project as ProjectAccessRecord;
+  const allMembers = projectData.members || [];
   const total = allMembers.length;
 
   // Sort members locally by role or joinedAt if needed, or stick to existing order
@@ -42,12 +44,15 @@ export async function GET(
   const idsToResolve = Array.from(
     new Set(
       rawMembers
-        .flatMap((m: any) => [m.userId, m.invitedBy])
+        .flatMap((member) => [member.userId, member.invitedBy])
         .filter(Boolean)
         .map(String),
     ),
   );
-  console.log("IDs to resolve:", idsToResolve);
+  logger.debug(
+    { projectId: id, idsToResolveCount: idsToResolve.length },
+    "Resolving project member identities",
+  );
 
   let usersById: Record<
     string,
@@ -60,7 +65,9 @@ export async function GET(
       .select("email name id")
       .lean();
 
-    usersById = users.reduce((acc: any, u: any) => {
+    usersById = users.reduce<
+      Record<string, { email?: string; _id?: string; name?: string }>
+    >((acc, u) => {
       const id = String(u._id || u.id);
       acc[id] = { email: u.email, name: u.name, _id: id };
       return acc;
@@ -78,7 +85,7 @@ export async function GET(
       : "Unknown User";
   };
 
-  const enriched = rawMembers.map((m: any) => {
+  const enriched = rawMembers.map((m: ProjectMember) => {
     const uid = m.userId ? String(m.userId) : "";
     const inviterId = m.invitedBy ? String(m.invitedBy) : "";
     const user = usersById[uid];

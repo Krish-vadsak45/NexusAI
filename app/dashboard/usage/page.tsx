@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { CSSProperties, useEffect, useState } from "react";
 import axios from "axios";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -10,16 +10,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Sparkles,
-  Zap,
-  LayoutDashboard,
-  ShieldCheck,
-  AlertCircle,
-} from "lucide-react";
+import { Sparkles, Zap, ShieldCheck, AlertCircle } from "lucide-react";
+import { getErrorMessage } from "@/lib/error-utils";
 import { cn } from "@/lib/utils";
 import { InlineLoader } from "@/components/InlineLoader";
-import UsageOverview from "@/components/UsageOverview";
+import UsageOverview from "@/features/dashboard/components/UsageOverview";
 
 interface UsageItem {
   feature: string;
@@ -46,10 +41,9 @@ export default function UsagePage() {
     const fetchUsage = async () => {
       try {
         const response = await axios.get("/api/profile/usage");
-        console.log("Usage Data:", response.data);
         setData(response.data);
-      } catch (err: any) {
-        setError(err.response?.data?.error || "Failed to load usage data");
+      } catch (error: unknown) {
+        setError(getErrorMessage(error, "Failed to load usage data"));
       } finally {
         setLoading(false);
       }
@@ -171,13 +165,14 @@ export default function UsagePage() {
                     "h-2",
                     item.used >= item.limit ? "bg-destructive/20" : "",
                   )}
-                  style={{
-                    // @ts-ignore
-                    "--progress-foreground":
-                      item.used >= item.limit
-                        ? "var(--destructive)"
-                        : "var(--primary)",
-                  }}
+                  style={
+                    {
+                      "--progress-foreground":
+                        item.used >= item.limit
+                          ? "var(--destructive)"
+                          : "var(--primary)",
+                    } as CSSProperties & { "--progress-foreground": string }
+                  }
                 />
                 {item.used >= item.limit && (
                   <p className="text-[10px] text-destructive font-medium">

@@ -1,9 +1,38 @@
 import { auth } from "@/lib/auth";
 import connectToDatabase from "@/lib/db";
+import logger from "@/lib/logger";
 import DailyUsage from "@/models/DailyUsage.model";
 import mongoose from "mongoose";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import type { UnknownRecord } from "@/lib/shared-types";
+
+type UsageAggregateRow = {
+  _id: {
+    date: string;
+    feature: string;
+  };
+  tokens: number;
+  count: number;
+  success: number;
+  fail: number;
+};
+
+type UsageOverviewRecord = {
+  date: string;
+  totalTokens: number;
+  totalAttempts: number;
+  totalSuccess: number;
+  totalFail: number;
+  tools: Record<string, UnknownRecord>;
+};
+
+type UsageSummary = {
+  totalTokens: number;
+  totalAttempts: number;
+  totalSuccess: number;
+  totalFail: number;
+};
 
 export async function GET(req: Request) {
   try {
@@ -27,13 +56,6 @@ export async function GET(req: Request) {
 
     const startDate = new Date(Date.UTC(year, month, 1));
     const endDate = new Date(Date.UTC(year, month + 1, 0, 23, 59, 59, 999));
-
-    // DEBUG: Log the query parameters
-    console.log("USAGE QUERY:", {
-      userId: session.user.id,
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-    });
 
     const usageData = await DailyUsage.aggregate([
       {
@@ -60,7 +82,9 @@ export async function GET(req: Request) {
     ]);
 
     // Format data for easier use in charts
-    const formattedData = usageData.reduce((acc: any, item: any) => {
+    const formattedData = (usageData as UsageAggregateRow[]).reduce<
+      Record<string, UsageOverviewRecord>
+    >((acc, item) => {
       const date = item._id.date;
       if (!acc[date]) {
         acc[date] = {
@@ -88,8 +112,8 @@ export async function GET(req: Request) {
       return acc;
     }, {});
 
-    const totals = Object.values(formattedData).reduce(
-      (acc: any, day: any) => {
+    const totals = Object.values(formattedData).reduce<UsageSummary>(
+      (acc, day) => {
         acc.totalTokens += day.totalTokens;
         acc.totalAttempts += day.totalAttempts;
         acc.totalSuccess += day.totalSuccess;
@@ -104,7 +128,7 @@ export async function GET(req: Request) {
       summary: totals,
     });
   } catch (error) {
-    console.error("Usage Overview Error:", error);
+    logger.error({ err: error }, "Usage overview request failed");
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 },

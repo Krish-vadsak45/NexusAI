@@ -50,7 +50,7 @@ const usageSchema = new Schema<IUsage>(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 const Usage = models?.Usage || model<IUsage>("Usage", usageSchema);

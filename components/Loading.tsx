@@ -1,23 +1,9 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { useState, useEffect } from "react";
 import { SpinnerLoader } from "./SpinnerLoader";
 
 export const Loading = () => {
-  const [progress, setProgress] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) return 100;
-        return prev + Math.random() * 30;
-      });
-    }, 800);
-
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#050505]">
       <Card className="bg-black/40 border border-white/5 shadow-[0_0_100px_rgba(255,255,255,0.03)] backdrop-blur-xl relative overflow-hidden">

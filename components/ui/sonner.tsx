@@ -3,8 +3,6 @@
 import {
   CircleCheckIcon,
   InfoIcon,
-  Loader2Icon,
-  // keep Loader2Icon in types but use InlineLoader for visuals
   OctagonXIcon,
   TriangleAlertIcon,
 } from "lucide-react";

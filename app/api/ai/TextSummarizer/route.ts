@@ -7,6 +7,7 @@ import {
 import axios from "axios";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { getErrorMessage } from "@/lib/error-utils";
 import logger from "@/lib/logger";
 
 export async function POST(req: Request) {
@@ -122,7 +123,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       summary: generatedText.trim(),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ err: error }, "Text Summarizer Error");
     // Get session again if it was successful before the error? No, we have session.
     if (session?.user?.id) {
@@ -130,7 +131,7 @@ export async function POST(req: Request) {
       await recordUsageResult(session.user.id, "text_summarizer", 0, "fail");
     }
     return NextResponse.json(
-      { error: error.message || "Internal Server Error" },
+      { error: getErrorMessage(error, "Internal Server Error") },
       { status: 500 },
     );
   }

@@ -4,6 +4,8 @@ import { headers } from "next/headers";
 import Project from "@/models/Project.model";
 import connectToDatabase from "@/lib/db";
 import { getOrSetCache, isValidMongoId } from "@/lib/cache-utils";
+import { getErrorMessage } from "@/lib/error-utils";
+import logger from "@/lib/logger";
 import redis from "@/lib/redisClient";
 
 // GET: Fetch all projects for the user or a specific project by ID
@@ -53,7 +55,7 @@ export async function GET(req: Request) {
     });
 
     return NextResponse.json(projects);
-  } catch (error) {
+  } catch {
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
@@ -81,12 +83,15 @@ export async function POST(req: Request) {
         "project_bloom_filter",
         project._id.toString(),
       );
-    } catch (e: any) {
-      console.warn("Bloom filter add failed:", e.message);
+    } catch (error: unknown) {
+      logger.warn(
+        { errorMessage: getErrorMessage(error) },
+        "Bloom filter add failed",
+      );
     }
 
     return NextResponse.json(project);
-  } catch (error) {
+  } catch {
     return new NextResponse("Internal Error", { status: 500 });
   }
 }

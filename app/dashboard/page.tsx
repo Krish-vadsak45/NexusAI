@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -40,45 +40,41 @@ import {
 import ReactMarkdown from "react-markdown";
 import { SpinnerLoader } from "@/components/SpinnerLoader";
 import { CldImage } from "next-cloudinary";
-
-interface HistoryItem {
-  _id: string;
-  tool: string;
-  title: string;
-  createdAt: string;
-  input: any;
-  output: any;
-}
+import type {
+  HistoryItem,
+  TitleSuggestion,
+  UnknownRecord,
+} from "@/lib/shared-types";
 
 export default function Dashboard() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTool, setSelectedTool] = useState("All");
   const limit = 12;
 
-  const fetchHistory = async (cursor: string | null = null, reset = false) => {
-    setLoading(true);
-    try {
-      const { data } = await axios.get("/api/history", {
-        params: {
-          cursor,
-          limit,
-          search: searchTerm,
-          tool: selectedTool,
-        },
-      });
-      setHistory((prev) => (reset ? data.items : [...prev, ...data.items]));
-      setNextCursor(data.nextCursor);
-      setTotalCount(data.totalCount);
-    } catch (error) {
-      console.error("Failed to fetch history", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetchHistory = useCallback(
+    async (cursor: string | null = null, reset = false) => {
+      setLoading(true);
+      try {
+        const { data } = await axios.get("/api/history", {
+          params: {
+            cursor,
+            limit,
+            search: searchTerm,
+            tool: selectedTool,
+          },
+        });
+        setHistory((prev) => (reset ? data.items : [...prev, ...data.items]));
+        setNextCursor(data.nextCursor);
+      } catch {
+      } finally {
+        setLoading(false);
+      }
+    },
+    [limit, searchTerm, selectedTool],
+  );
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
@@ -86,7 +82,7 @@ export default function Dashboard() {
     }, 300);
 
     return () => clearTimeout(debounceTimer);
-  }, [searchTerm, selectedTool]);
+  }, [fetchHistory]);
 
   const handleLoadMore = () => {
     if (nextCursor) {
@@ -120,8 +116,16 @@ export default function Dashboard() {
   };
 
   const renderInput = (item: HistoryItem) => {
-    const input = item.input;
+    const input = item.input as UnknownRecord;
     if (!input) return null;
+    const primaryInputValue = [
+      input.text,
+      input.prompt,
+      input.context,
+      input.jobDescription,
+    ].find(
+      (value): value is string => typeof value === "string" && value.length > 0,
+    );
 
     const getLabel = () => {
       if (input.prompt) return "Prompt";
@@ -157,19 +161,13 @@ export default function Dashboard() {
               </div>
             );
           })}
-          {(input.text ||
-            input.prompt ||
-            input.context ||
-            input.jobDescription) && (
+          {primaryInputValue && (
             <div className="col-span-1 md:col-span-2 flex flex-col space-y-1 mt-1">
               <span className="text-xs font-medium text-muted-foreground uppercase">
                 {getLabel()}
               </span>
               <div className="text-sm bg-background p-3 rounded-md border whitespace-pre-wrap max-h-40 overflow-y-auto shadow-sm">
-                {input.text ||
-                  input.prompt ||
-                  input.context ||
-                  input.jobDescription}
+                {primaryInputValue}
               </div>
             </div>
           )}
@@ -182,14 +180,17 @@ export default function Dashboard() {
     let content;
 
     if (item.tool === "Article Writer") {
+      const output = item.output as { article?: string };
       content = (
         <div className="prose prose-sm dark:prose-invert max-w-none bg-background p-6 rounded-lg border shadow-sm">
-          <ReactMarkdown>{item.output.article || ""}</ReactMarkdown>
+          <ReactMarkdown>{output.article || ""}</ReactMarkdown>
         </div>
       );
     } else if (item.tool === "Image Generation") {
       const imageUrl =
-        typeof item.output === "string" ? item.output : item.output.url;
+        typeof item.output === "string"
+          ? item.output
+          : ((item.output as { url?: string }).url ?? "");
       content = (
         <div className="relative aspect-square max-w-lg mx-auto rounded-lg overflow-hidden border shadow-sm">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -203,21 +204,24 @@ export default function Dashboard() {
     } else if (item.tool === "Title Generator") {
       content = (
         <ul className="grid gap-3 sm:grid-cols-2">
-          {Array.isArray(item.output) &&
-            item.output.map((title: any, idx: number) => (
-              <li
-                key={idx}
-                className="p-4 bg-background rounded-lg border shadow-sm flex items-start gap-3"
-              >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                  {idx + 1}
-                </span>
-                <span className="font-medium leading-tight">{title.title}</span>
-              </li>
-            ))}
+          {(Array.isArray(item.output)
+            ? (item.output as TitleSuggestion[])
+            : []
+          ).map((title, idx: number) => (
+            <li
+              key={idx}
+              className="p-4 bg-background rounded-lg border shadow-sm flex items-start gap-3"
+            >
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                {idx + 1}
+              </span>
+              <span className="font-medium leading-tight">{title.title}</span>
+            </li>
+          ))}
         </ul>
       );
     } else if (item.tool === "Code Generator") {
+      const output = item.output as { code?: string; explanation?: string };
       content = (
         <div className="space-y-4">
           <div className="relative rounded-lg border bg-muted/50">
@@ -227,7 +231,7 @@ export default function Dashboard() {
               </span>
             </div>
             <pre className="p-4 overflow-x-auto text-sm font-mono">
-              <code>{item.output.code}</code>
+              <code>{output.code}</code>
             </pre>
           </div>
           <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg border border-blue-100 dark:border-blue-900/50">
@@ -235,7 +239,7 @@ export default function Dashboard() {
               Explanation
             </h4>
             <p className="text-sm text-blue-600 dark:text-blue-300">
-              {item.output.explanation}
+              {output.explanation}
             </p>
           </div>
         </div>
@@ -243,46 +247,60 @@ export default function Dashboard() {
     } else if (item.tool === "Text Summarizer") {
       content = (
         <div className="bg-background p-6 rounded-lg border shadow-sm">
-          <p className="text-sm leading-relaxed">{item.output}</p>
+          <p className="text-sm leading-relaxed">{String(item.output ?? "")}</p>
         </div>
       );
     } else if (
       item.tool === "Background Removal" ||
       item.tool === "Object Removal"
     ) {
+      const output = item.output as UnknownRecord & {
+        publicId?: string;
+        mode?: string;
+        prompt?: string;
+        objectDescription?: string;
+        replaceWith?: string;
+        url?: string;
+      };
+      const backgroundPrompt =
+        output.mode === "replace" && typeof output.prompt === "string"
+          ? output.prompt
+          : undefined;
+      const removeTarget =
+        output.mode === "remove" && typeof output.objectDescription === "string"
+          ? output.objectDescription
+          : undefined;
+      const replaceTargets =
+        output.mode === "replace" &&
+        typeof output.objectDescription === "string" &&
+        typeof output.replaceWith === "string"
+          ? [output.objectDescription, output.replaceWith]
+          : undefined;
       content = (
         <div className="relative aspect-video w-full max-w-2xl mx-auto rounded-lg overflow-hidden border shadow-sm bg-[url('https://media.istockphoto.com/id/1226478932/vector/checkered-transparent-background-vector-seamless-pattern.jpg?s=612x612&w=0&k=20&c=O_70rQ835194uX2b_coI3Xj8jD7D9Kq_zSc8Jg6_z9E=')] bg-repeat">
-          {item.output.publicId ? (
+          {output.publicId ? (
             <CldImage
-              src={item.output.publicId}
+              src={output.publicId}
               alt={item.title}
               fill
               className="object-contain"
               removeBackground={
-                item.tool === "Background Removal" &&
-                item.output.mode === "remove"
+                item.tool === "Background Removal" && output.mode === "remove"
               }
               replaceBackground={
-                item.tool === "Background Removal" &&
-                item.output.mode === "replace"
-                  ? item.output.prompt
+                item.tool === "Background Removal"
+                  ? backgroundPrompt
                   : undefined
               }
-              remove={
-                item.tool === "Object Removal" && item.output.mode === "remove"
-                  ? item.output.objectDescription
-                  : undefined
-              }
+              remove={item.tool === "Object Removal" ? removeTarget : undefined}
               replace={
-                item.tool === "Object Removal" && item.output.mode === "replace"
-                  ? [item.output.objectDescription, item.output.replaceWith]
-                  : undefined
+                item.tool === "Object Removal" ? replaceTargets : undefined
               }
             />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={item.output.url}
+              src={output.url ?? ""}
               alt={item.title}
               className="object-contain w-full h-full"
             />
@@ -290,6 +308,12 @@ export default function Dashboard() {
         </div>
       );
     } else if (item.tool === "Resume Reviewer") {
+      const output = item.output as {
+        score?: number;
+        summary?: string;
+        strengths?: string[];
+        weaknesses?: string[];
+      };
       content = (
         <div className="space-y-6">
           <div className="flex items-center gap-4 p-4 bg-background rounded-lg border shadow-sm">
@@ -298,14 +322,14 @@ export default function Dashboard() {
                 Score
               </div>
               <div className="text-3xl font-bold text-primary">
-                {item.output.score}/100
+                {output.score ?? 0}/100
               </div>
             </div>
           </div>
           <div className="bg-background p-6 rounded-lg border shadow-sm">
             <h4 className="font-semibold mb-2">Summary</h4>
             <p className="text-sm text-muted-foreground">
-              {item.output.summary}
+              {output.summary ?? ""}
             </p>
           </div>
           <div className="grid md:grid-cols-2 gap-4">
@@ -314,7 +338,7 @@ export default function Dashboard() {
                 Strengths
               </h4>
               <ul className="list-disc list-inside text-sm text-green-600 dark:text-green-300 space-y-1">
-                {item.output.strengths?.map((s: string, i: number) => (
+                {output.strengths?.map((s: string, i: number) => (
                   <li key={i}>{s}</li>
                 ))}
               </ul>
@@ -324,7 +348,7 @@ export default function Dashboard() {
                 Weaknesses
               </h4>
               <ul className="list-disc list-inside text-sm text-red-600 dark:text-red-300 space-y-1">
-                {item.output.weaknesses?.map((s: string, i: number) => (
+                {output.weaknesses?.map((s: string, i: number) => (
                   <li key={i}>{s}</li>
                 ))}
               </ul>
@@ -335,7 +359,9 @@ export default function Dashboard() {
     } else if (item.tool === "Video Repurposer") {
       content = (
         <div className="prose prose-sm dark:prose-invert max-w-none bg-background p-6 rounded-lg border shadow-sm">
-          <ReactMarkdown>{item.output || ""}</ReactMarkdown>
+          <ReactMarkdown>
+            {typeof item.output === "string" ? item.output : ""}
+          </ReactMarkdown>
         </div>
       );
     } else {
