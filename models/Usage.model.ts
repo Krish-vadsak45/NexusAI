@@ -53,6 +53,8 @@ const usageSchema = new Schema<IUsage>(
   },
 );
 
+usageSchema.index({ userId: 1, date: -1 });
+
 const Usage = models?.Usage || model<IUsage>("Usage", usageSchema);
 
 export default Usage;

@@ -147,7 +147,7 @@ export function Pricing() {
   };
 
   return (
-    <section className="container mx-auto px-6 py-20 md:px-8 md:py-32 lg:px-12 relative">
+    <section className="container relative mx-auto px-4 py-16 sm:px-6 sm:py-20 md:px-8 md:py-32 lg:px-12">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-linear-to-b from-blue-500/5 via-transparent to-transparent -z-10" />
 
       <motion.div
@@ -170,7 +170,7 @@ export function Pricing() {
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true }}
-        className="grid gap-8 md:grid-cols-3 lg:gap-10 perspective-1000"
+        className="grid gap-6 sm:gap-8 md:grid-cols-3 lg:gap-10 perspective-1000"
       >
         {plans.map((plan) => {
           const isCurrentPlan = currentPlan === plan.id;
@@ -225,7 +225,7 @@ export function Pricing() {
                   </div>
                 )}
 
-                <CardHeader className="p-8 pb-4">
+                <CardHeader className="p-6 pb-4 sm:p-8 sm:pb-4">
                   <div className="mb-4 inline-flex items-center justify-center p-3 rounded-2xl bg-white/5 w-fit border border-white/5 shadow-inner">
                     {plan.icon}
                   </div>
@@ -233,7 +233,7 @@ export function Pricing() {
                     {plan.name}
                   </h3>
                   <div className="mt-4 flex items-baseline gap-1">
-                    <span className="text-5xl font-bold tracking-tight text-white">
+                    <span className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
                       {plan.price}
                     </span>
                     <span className="text-gray-500 font-medium">/month</span>
@@ -243,7 +243,7 @@ export function Pricing() {
                   </p>
                 </CardHeader>
 
-                <CardContent className="flex-1 p-8 pt-4">
+                <CardContent className="flex-1 p-6 pt-4 sm:p-8 sm:pt-4">
                   <div className="h-px w-full bg-linear-to-r from-transparent via-white/10 to-transparent mb-8" />
                   <ul className="space-y-4">
                     {plan.features.map((feature) => (
@@ -264,10 +264,10 @@ export function Pricing() {
                   </ul>
                 </CardContent>
 
-                <CardFooter className="p-8 pt-0 mt-auto">
+                <CardFooter className="mt-auto p-6 pt-0 sm:p-8 sm:pt-0">
                   <Button
                     variant={isCurrentPlan ? "outline" : plan.variant}
-                    className={`w-full h-12 text-base font-semibold transition-all duration-300 ${
+                    className={`h-12 w-full text-sm font-semibold transition-all duration-300 sm:text-base ${
                       plan.popular && !isCurrentPlan
                         ? "bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 border-none shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_30px_rgba(168,85,247,0.4)]"
                         : "hover:bg-white/5"
@@ -304,9 +304,9 @@ export function Pricing() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.8 }}
-        className="mt-32 max-w-4xl mx-auto"
+        className="mx-auto mt-20 max-w-4xl sm:mt-32"
       >
-        <h3 className="text-3xl font-bold text-center mb-12">
+        <h3 className="mb-8 text-center text-2xl font-bold sm:mb-12 sm:text-3xl">
           Frequently Asked Questions
         </h3>
         <div className="grid gap-6 md:grid-cols-2">

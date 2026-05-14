@@ -17,7 +17,7 @@ export const Loading = () => {
           }}
         />
 
-        <CardContent className="relative z-10 p-12 min-w-[380px]">
+        <CardContent className="relative z-10 w-[min(92vw,380px)] p-6 sm:p-12">
           {/* Complete Loading State */}
           <div className="flex flex-col items-center gap-8">
             <div className="relative">

@@ -12,6 +12,18 @@ import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error-utils";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Eye,
+  EyeOff,
+  KeyRound,
+  Mail,
+  Lock,
+  ArrowRight,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+} from "lucide-react";
 
 const SignInPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -26,13 +38,6 @@ const SignInPage = () => {
     password: z
       .string()
       .min(8, { message: "Password must be at least 8 characters" }),
-    // .regex(
-    //   /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+=\[\]{};:'"\\|,.<>\/?`~])/,
-    //   {
-    //     message:
-    //       "Password must include at least one uppercase letter, one lowercase letter, one number, and one special character",
-    //   }
-    // ),
   });
 
   type FormData = z.infer<typeof schema>;
@@ -40,18 +45,39 @@ const SignInPage = () => {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isValid, isDirty },
     setError: setFormError,
     clearErrors,
     getValues,
   } = useForm<FormData>({
     resolver: zodResolver(schema),
+    mode: "onChange",
   });
 
   const handleGoogleSignIn = async () => {
-    await authClient.signIn.social({
-      provider: "google",
-    });
+    try {
+      await authClient.signIn.social({
+        provider: "google",
+      });
+    } catch {
+      toast.error("Failed to sign in with Google");
+    }
+  };
+
+  const handlePasskeySignIn = async () => {
+    try {
+      setIsSubmitting(true);
+      const { error } = await authClient.signIn.passkey();
+      if (error) {
+        throw new Error(error.message);
+      }
+      toast.success("Signed in with passkey.");
+      router.push("/");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Passkey sign-in failed"));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const onSubmit = async (values: FormData) => {
@@ -163,149 +189,247 @@ const SignInPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-black to-gray-800 text-white">
-      <Card className="w-full max-w-md rounded-2xl shadow-2xl border border-gray-800 bg-black/90 text-white backdrop-blur-lg">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-4xl font-extrabold text-center text-white drop-shadow-lg tracking-tight">
-            Login
-          </CardTitle>
-          <div className="mt-2 text-center text-gray-400 text-sm font-medium">
-            Sign in to your account
-          </div>
-        </CardHeader>
-        <CardContent>
-          <form
-            onSubmit={handleSubmit(onSubmit)}
-            className="space-y-6"
-            noValidate
-          >
-            {error && (
-              <div className="bg-red-600/90 text-white rounded px-3 py-2 text-sm border border-red-400 shadow mb-2">
-                {error}
-                {emailNotVerified && (
-                  <div className="mt-3 flex items-center justify-between gap-3">
-                    <span className="text-xs text-gray-100">
-                      Your email is not verified.
-                    </span>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="bg-blue-600 hover:bg-blue-700"
-                      onClick={handleStartEmailVerification}
-                      disabled={isSubmitting}
-                    >
-                      Email Verify
-                    </Button>
+    <div className="fixed inset-0 w-full h-full flex items-center justify-center bg-[#050b16] overflow-hidden">
+      {/* Dynamic Background Elements */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,_rgba(59,130,246,0.15),_transparent_40%),radial-gradient(circle_at_70%_80%,_rgba(147,51,234,0.1),_transparent_40%)]" />
+      <div className="absolute top-0 left-0 w-full h-full bg-[url('/noise.svg')] opacity-[0.03] pointer-events-none" />
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="w-full max-w-md px-4 z-10"
+      >
+        <Card className="rounded-3xl shadow-[0_0_50px_-12px_rgba(59,130,246,0.25)] border-white/5 bg-black/40 backdrop-blur-2xl text-white overflow-hidden max-h-[95vh] flex flex-col">
+          <CardHeader className="pt-6 pb-2 space-y-1">
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              className="flex justify-center mb-1"
+            >
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <span className="text-lg font-black tracking-tighter">N</span>
+              </div>
+            </motion.div>
+            <CardTitle className="text-2xl font-bold text-center tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-400">
+              Welcome back
+            </CardTitle>
+            <p className="text-center text-gray-400 text-xs font-medium">
+              Enter your credentials to access your workspace
+            </p>
+          </CardHeader>
+
+          <CardContent className="px-8 pb-6 flex-1 overflow-y-auto custom-scrollbar">
+            <form
+              onSubmit={handleSubmit(onSubmit)}
+              className="space-y-4"
+              noValidate
+            >
+              <AnimatePresence mode="wait">
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="bg-red-500/10 border border-red-500/20 text-red-200 rounded-2xl p-4 text-sm flex gap-3 items-start overflow-hidden"
+                  >
+                    <AlertCircle className="h-5 w-5 shrink-0 text-red-400" />
+                    <div className="flex-1">
+                      <p className="font-medium">Authentication Error</p>
+                      <p className="text-red-300/80 mt-0.5">{error}</p>
+
+                      {emailNotVerified && (
+                        <div className="mt-3 pt-3 border-t border-red-500/10 flex items-center justify-between gap-3">
+                          <span className="text-xs text-red-300/70 italic">
+                            Email verification required.
+                          </span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="bg-red-500/20 hover:bg-red-500/30 text-red-200 border-none h-8 px-4 rounded-xl transition-colors"
+                            onClick={handleStartEmailVerification}
+                            disabled={isSubmitting}
+                          >
+                            Verify now
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="email"
+                  className="text-gray-300 text-xs font-semibold uppercase tracking-wider ml-1"
+                >
+                  Email Address
+                </Label>
+                <div className="relative group text-white">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200 group-focus-within:text-blue-400 text-gray-500">
+                    <Mail className="h-4.5 w-4.5" />
                   </div>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="name@company.com"
+                    autoComplete="email"
+                    required
+                    className="bg-white/[0.03] text-white border-white/10 pl-11 py-6 rounded-2xl placeholder-gray-500 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all duration-300 hover:bg-white/[0.05]"
+                    {...register("email")}
+                    aria-invalid={!!errors.email}
+                  />
+                  {isDirty && !errors.email && (
+                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    </div>
+                  )}
+                </div>
+                {errors.email && (
+                  <motion.p
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="text-red-400 text-xs mt-1 ml-1 font-medium"
+                  >
+                    {errors.email.message}
+                  </motion.p>
                 )}
               </div>
-            )}
-            <div className="space-y-1">
-              <Label htmlFor="email" className="text-white font-semibold">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                autoComplete="email"
-                required
-                className="bg-black/80 text-white border-gray-700 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
-                {...register("email")}
-                aria-invalid={!!errors.email}
-              />
-              {errors.email && (
-                <div className="text-red-400 text-xs mt-1">
-                  {errors.email.message}
+
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center ml-1">
+                  <Label
+                    htmlFor="password"
+                    className="text-gray-300 text-xs font-semibold uppercase tracking-wider"
+                  >
+                    Password
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="text-blue-400 hover:text-blue-300 p-0 h-auto text-xs font-medium decoration-blue-400/30 hover:underline transition-all"
+                    onClick={() => router.push("/forgot-password")}
+                  >
+                    Forgot?
+                  </Button>
                 </div>
-              )}
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="password" className="text-white font-semibold">
-                Password
-              </Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  autoComplete="new-password"
-                  required
-                  className="bg-black/80 text-white border-gray-700 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
-                  {...register("password")}
-                  aria-invalid={!!errors.password}
-                />
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 px-2 text-white"
-                  onClick={() => setShowPassword((s) => !s)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? "Hide" : "Show"}
-                </Button>
-              </div>
-              {errors.password && (
-                <div className="text-red-400 text-xs mt-1">
-                  {errors.password.message}
-                </div>
-              )}
-              <div className="text-right mt-1">
-                <Button
-                  type="button"
-                  variant="link"
-                  className="text-blue-400 hover:text-blue-500 p-0 h-auto text-sm font-semibold cursor-pointer"
-                  onClick={() => router.push("/forgot-password")}
-                >
-                  Forgot password?
-                </Button>
-              </div>
-            </div>
-            <Button
-              type="submit"
-              className="w-full bg-blue-600 text-white font-bold py-2 rounded-lg shadow hover:bg-blue-700 transition-all duration-150"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Logging in…" : "Login"}
-            </Button>
-            <div className="flex items-center gap-2 my-4">
-              <div className="flex-1 h-px bg-gray-700" />
-              <span className="text-xs text-gray-400">or</span>
-              <div className="flex-1 h-px bg-gray-700" />
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full bg-black text-white border border-gray-700 hover:bg-gray-900 hover:border-blue-600 flex items-center justify-center gap-2"
-              onClick={handleGoogleSignIn}
-            >
-              <svg
-                className="w-5 h-5 mr-2"
-                viewBox="0 0 48 48"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <g>
-                  <path
-                    fill="#fff"
-                    d="M44.5 20H24v8.5h11.7C34.7 33.7 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 6 .9 8.3 2.7l6.2-6.2C34.2 4.5 29.4 2.5 24 2.5 12.7 2.5 3.5 11.7 3.5 23S12.7 43.5 24 43.5c10.5 0 19.5-8.5 19.5-19.5 0-1.3-.1-2.5-.3-3.5z"
+                <div className="relative group text-white">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200 group-focus-within:text-blue-400 text-gray-500">
+                    <Lock className="h-4.5 w-4.5" />
+                  </div>
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    required
+                    className="bg-white/[0.03] text-white border-white/10 pl-11 py-6 rounded-2xl placeholder-gray-500 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all duration-300 hover:bg-white/[0.05]"
+                    {...register("password")}
+                    aria-invalid={!!errors.password}
                   />
-                </g>
-              </svg>
-              <span className="font-semibold">Continue with Google</span>
-            </Button>
-            <div className="text-center text-sm mt-6">
-              <span className="text-gray-400">Don&apos;t have an account?</span>{" "}
-              <Link
-                href="/auth/signup"
-                className="underline font-semibold text-blue-400 hover:text-blue-600 transition-all"
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl"
+                    onClick={() => setShowPassword((s) => !s)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                {errors.password && (
+                  <motion.p
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="text-red-400 text-xs mt-1 ml-1 font-medium"
+                  >
+                    {errors.password.message}
+                  </motion.p>
+                )}
+              </div>
+
+              <Button
+                type="submit"
+                disabled={isSubmitting || !isValid}
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-6 rounded-2xl shadow-[0_10px_20px_-10px_rgba(59,130,246,0.5)] transition-all duration-300 active:scale-[0.98] disabled:opacity-50 disabled:grayscale group"
               >
-                Sign Up
-              </Link>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+                {isSubmitting ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    Sign In
+                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                )}
+              </Button>
+
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-white/5" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-[#0b0c10] px-3 text-gray-500 font-bold tracking-widest leading-none">
+                    Or continue with
+                  </span>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full bg-white/[0.03] text-white border-white/10 hover:bg-white/[0.08] hover:border-white/20 py-6 rounded-2xl flex items-center justify-center gap-3 transition-all duration-300"
+                onClick={handlePasskeySignIn}
+                disabled={isSubmitting}
+              >
+                <KeyRound className="w-5 h-5" />
+                <span className="font-semibold">Use a Passkey</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full bg-white/[0.03] text-white border-white/10 hover:bg-white/[0.08] hover:border-white/20 py-6 rounded-2xl flex items-center justify-center gap-3 transition-all duration-300"
+                onClick={handleGoogleSignIn}
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  />
+                </svg>
+                <span className="font-semibold">Google Account</span>
+              </Button>
+
+              <div className="text-center pt-2">
+                <span className="text-gray-500 text-sm">New here?</span>{" "}
+                <Link
+                  href="/auth/signup"
+                  className="text-sm font-bold text-blue-400 hover:text-blue-300 transition-colors ml-1"
+                >
+                  Create an account
+                </Link>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 };

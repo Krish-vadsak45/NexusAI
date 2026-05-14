@@ -3,7 +3,7 @@
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import DashboardSidebar from "./dashboardsidebar";
+import DashboardSidebar from "@/features/dashboard/components/DashboardSidebar";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 

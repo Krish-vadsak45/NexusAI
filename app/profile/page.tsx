@@ -17,6 +17,7 @@ import { ManageSubscriptionButton } from "@/features/billing/components/ManageSu
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { getErrorMessage } from "@/lib/error-utils";
+import { SecurityCenter } from "@/features/auth/components/SecurityCenter";
 import {
   User,
   Mail,
@@ -282,6 +283,8 @@ export default function ProfilePage() {
             </Card>
           </div>
         </div>
+
+        <SecurityCenter />
       </div>
     </div>
   );

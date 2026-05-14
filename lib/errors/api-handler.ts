@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import logger from "@/lib/logger";
 import { AppError, ValidationError, isAppError } from "./app-error";
+import {
+  createRequestContext,
+  logRequestCompleted,
+  type RequestContext,
+} from "@/lib/observability";
 
 type RouteContext = {
   params?: Promise<Record<string, string>> | Record<string, string>;
@@ -46,7 +51,11 @@ function normalizeError(error: unknown): AppError {
   });
 }
 
-export function handleApiError(error: unknown, req: Request) {
+export function handleApiError(
+  error: unknown,
+  req: Request,
+  context?: RequestContext,
+) {
   const normalized = normalizeError(error);
   const message = normalized.expose
     ? normalized.message
@@ -59,12 +68,13 @@ export function handleApiError(error: unknown, req: Request) {
       error: toSerializableError(normalized.cause ?? normalized),
       method: req.method,
       path: new URL(req.url).pathname,
+      requestId: context?.requestId,
       statusCode: normalized.statusCode,
     },
     "API request failed",
   );
 
-  return NextResponse.json(
+  const response = NextResponse.json(
     {
       code: normalized.code,
       details: normalized.details,
@@ -72,6 +82,14 @@ export function handleApiError(error: unknown, req: Request) {
     },
     { status: normalized.statusCode },
   );
+  if (context) {
+    response.headers.set("x-request-id", context.requestId);
+    logRequestCompleted(context, {
+      statusCode: normalized.statusCode,
+      outcome: "error",
+    });
+  }
+  return response;
 }
 
 export function withApiHandler<
@@ -79,10 +97,19 @@ export function withApiHandler<
   TContext extends RouteContext = RouteContext,
 >(handler: RouteHandler<TRequest, TContext>) {
   return async (req: TRequest, context?: TContext) => {
+    const requestContext = createRequestContext(req);
     try {
-      return await handler(req, context);
+      const response = await handler(req, context);
+      if (response instanceof Response) {
+        response.headers.set("x-request-id", requestContext.requestId);
+      }
+      logRequestCompleted(requestContext, {
+        statusCode: response.status,
+        outcome: "success",
+      });
+      return response;
     } catch (error) {
-      return handleApiError(error, req);
+      return handleApiError(error, req, requestContext);
     }
   };
 }

@@ -13,7 +13,7 @@ export default function InfiniteScrollText({
 }: InfiniteScrollTextProps) {
   return (
     <div
-      className={`relative overflow-hidden bg-white/5 backdrop-blur-md border-y border-white/5 py-4 ${className}`}
+      className={`relative overflow-hidden border-y border-white/5 bg-white/5 py-4 backdrop-blur-md ${className}`}
       style={{
         maskImage:
           "linear-gradient(to right, transparent, black 10%, black 90%, transparent)",
@@ -21,15 +21,18 @@ export default function InfiniteScrollText({
           "linear-gradient(to right, transparent, black 10%, black 90%, transparent)",
       }}
     >
+      <div className="flex flex-wrap items-center justify-center gap-3 px-2 md:hidden">
+        {children}
+      </div>
       <div
-        className="flex whitespace-nowrap animate-scroll items-center"
+        className="hidden items-center whitespace-nowrap md:flex"
         style={{
           animation: `scroll ${speed}s linear infinite`,
         }}
       >
-        <div className="flex items-center gap-16 px-8 shrink-0">{children}</div>
-        <div className="flex items-center gap-16 px-8 shrink-0">{children}</div>
-        <div className="flex items-center gap-16 px-8 shrink-0">{children}</div>
+        <div className="flex shrink-0 items-center gap-16 px-8">{children}</div>
+        <div className="flex shrink-0 items-center gap-16 px-8">{children}</div>
+        <div className="flex shrink-0 items-center gap-16 px-8">{children}</div>
       </div>
       <style>{`
         @keyframes scroll {

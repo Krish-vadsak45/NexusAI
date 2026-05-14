@@ -31,11 +31,10 @@ export default function FeaturesPage() {
   };
 
   const itemVariants: Variants = {
-    hidden: { opacity: 0, y: 30, filter: "blur(10px)" },
+    hidden: { opacity: 0, y: 30 },
     visible: {
       opacity: 1,
       y: 0,
-      filter: "blur(0px)",
       transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
     },
   };
@@ -44,19 +43,19 @@ export default function FeaturesPage() {
     <main className="min-h-screen bg-black text-white relative overflow-hidden">
       {/* Background Complex */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-600/10 blur-[150px] rounded-full" />
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-purple-600/10 blur-[150px] rounded-full" />
+        <div className="absolute left-1/4 top-0 h-[280px] w-[280px] rounded-full bg-blue-600/10 blur-[150px] sm:h-[600px] sm:w-[600px]" />
+        <div className="absolute bottom-0 right-1/4 h-[240px] w-[240px] rounded-full bg-purple-600/10 blur-[150px] sm:h-[500px] sm:w-[500px]" />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff02_1px,transparent_1px),linear-gradient(to_bottom,#ffffff02_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-soft-light" />
+        <div className="hero-noise-overlay absolute inset-0 opacity-20 mix-blend-soft-light" />
       </div>
 
-      <div className="relative z-10 pt-32 pb-20 container mx-auto px-6">
+      <div className="container relative z-10 mx-auto px-4 pb-16 pt-20 sm:px-6 sm:pb-20 sm:pt-28">
         {/* Hero Section */}
         <motion.div
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="text-center max-w-5xl mx-auto mb-32"
+          className="mx-auto mb-16 max-w-5xl text-center sm:mb-24 lg:mb-32"
         >
           <motion.div
             variants={itemVariants}
@@ -68,7 +67,7 @@ export default function FeaturesPage() {
 
           <motion.h1
             variants={itemVariants}
-            className="text-balance text-6xl font-black tracking-tight sm:text-8xl lg:text-9xl bg-linear-to-b from-white to-white/40 bg-clip-text text-transparent leading-[0.9] mb-12"
+            className="mb-8 text-balance bg-linear-to-b from-white to-white/40 bg-clip-text text-4xl font-black leading-[0.95] tracking-tight text-transparent sm:mb-12 sm:text-6xl lg:text-8xl xl:text-9xl"
           >
             The Neural <br />
             <span className="bg-clip-text text-transparent bg-linear-to-r from-blue-400 via-blue-600 to-blue-400 bg-[length:200%_auto] animate-gradient-x">
@@ -78,7 +77,7 @@ export default function FeaturesPage() {
 
           <motion.p
             variants={itemVariants}
-            className="text-pretty text-xl text-gray-400 font-medium leading-relaxed max-w-3xl mx-auto"
+            className="mx-auto max-w-3xl text-pretty text-base font-medium leading-relaxed text-gray-400 sm:text-lg lg:text-xl"
           >
             Beyond simple tools. NexusAI provides a unified operational
             environment for industrial-grade AI generation, combining
@@ -87,14 +86,14 @@ export default function FeaturesPage() {
         </motion.div>
 
         {/* Modular Systems Grid */}
-        <section className="mb-40">
+        <section className="mb-20 sm:mb-28 lg:mb-40">
           <SectionHeader
             badge="Generative Engines"
             title="Production Ready Agents"
             description="Our suite of specialized models are custom-tuned for high-fidelity content creation."
           />
 
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:gap-8 md:grid-cols-2 lg:grid-cols-3">
             <FeatureCard
               icon={<Brain className="w-8 h-8" />}
               title="AI Article Writer"
@@ -135,8 +134,8 @@ export default function FeaturesPage() {
         </section>
 
         {/* Technical Stack Section */}
-        <section className="mb-40 relative">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[500px] bg-blue-600/5 blur-[120px] rounded-full -z-10" />
+        <section className="relative mb-20 sm:mb-28 lg:mb-40">
+          <div className="absolute left-1/2 top-1/2 h-[260px] w-full -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-600/5 blur-[120px] -z-10 sm:h-[500px]" />
 
           <SectionHeader
             badge="Infrastructure Layer"
@@ -144,8 +143,8 @@ export default function FeaturesPage() {
             description="Our platform is engineered using the most reliable and secure enterprise technologies available."
           />
 
-          <div className="grid gap-12 lg:grid-cols-2 items-center">
-            <div className="space-y-10">
+          <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
+            <div className="space-y-8 sm:space-y-10">
               <TechFeature
                 icon={<ShieldCheck className="text-emerald-400" />}
                 title="Secure Auth Protocols"
@@ -165,7 +164,7 @@ export default function FeaturesPage() {
 
             <div className="relative group">
               <div className="absolute -inset-1 rounded-[2.5rem] bg-linear-to-r from-blue-600 to-purple-600 opacity-20 blur-2xl group-hover:opacity-40 transition duration-1000" />
-              <div className="relative aspect-square rounded-[2.5rem] bg-white/[0.03] border border-white/5 backdrop-blur-3xl p-10 flex items-center justify-center overflow-hidden">
+              <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-[2rem] border border-white/5 bg-white/[0.03] p-4 backdrop-blur-3xl sm:rounded-[2.5rem] sm:p-10">
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{
@@ -176,11 +175,11 @@ export default function FeaturesPage() {
                   className="w-full h-full opacity-10"
                 >
                   <div className="absolute inset-0 border-[2px] border-dashed border-white/40 rounded-full" />
-                  <div className="absolute inset-20 border-[2px] border-dashed border-blue-500/40 rounded-full" />
-                  <div className="absolute inset-40 border-[2px] border-dashed border-purple-500/40 rounded-full" />
+                  <div className="absolute inset-10 rounded-full border-[2px] border-dashed border-blue-500/40 sm:inset-20" />
+                  <div className="absolute inset-20 rounded-full border-[2px] border-dashed border-purple-500/40 sm:inset-40" />
                 </motion.div>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <Cpu className="w-32 h-32 text-blue-500 drop-shadow-[0_0_30px_rgba(59,130,246,0.5)]" />
+                  <Cpu className="h-20 w-20 text-blue-500 drop-shadow-[0_0_30px_rgba(59,130,246,0.5)] sm:h-32 sm:w-32" />
                 </div>
               </div>
             </div>
@@ -192,13 +191,13 @@ export default function FeaturesPage() {
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
-          className="relative rounded-[3rem] border border-white/5 bg-white/[0.02] p-20 text-center overflow-hidden"
+          className="relative overflow-hidden rounded-[2rem] border border-white/5 bg-white/[0.02] p-6 text-center sm:rounded-[3rem] sm:p-10 lg:p-20"
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.1),transparent_70%)]" />
-          <h2 className="relative z-10 text-5xl font-black mb-8 tracking-tight">
+          <h2 className="relative z-10 mb-6 text-3xl font-black tracking-tight sm:mb-8 sm:text-4xl lg:text-5xl">
             Available Across All Nodes
           </h2>
-          <p className="relative z-10 text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
+          <p className="relative z-10 mx-auto mb-8 max-w-2xl text-base text-gray-400 sm:mb-12 sm:text-lg lg:text-xl">
             Experience the full potential of NexusAI. Register today and deploy
             your first model in under 60 seconds.
           </p>
@@ -206,7 +205,7 @@ export default function FeaturesPage() {
             <Link href="/auth/signup">
               <Button
                 size="lg"
-                className="h-16 px-10 rounded-full bg-blue-600 text-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-xl"
+              className="h-14 rounded-full bg-blue-600 px-8 text-base font-bold transition-all hover:scale-105 active:scale-95 shadow-xl sm:h-16 sm:px-10 sm:text-xl"
               >
                 Get Started Now
               </Button>
@@ -215,7 +214,7 @@ export default function FeaturesPage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="h-16 px-10 rounded-full border-white/10 text-xl font-bold hover:bg-white/5"
+                className="h-14 rounded-full border-white/10 px-8 text-base font-bold hover:bg-white/5 sm:h-16 sm:px-10 sm:text-xl"
               >
                 View Pricing
               </Button>
@@ -238,14 +237,14 @@ function SectionHeader({
   description: string;
 }) {
   return (
-    <div className="max-w-3xl mb-20 text-left">
+    <div className="mb-12 max-w-3xl text-left sm:mb-20">
       <span className="text-blue-500 font-black uppercase tracking-[0.2em] text-sm mb-4 block">
         {badge}
       </span>
-      <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-6 tracking-tight">
+      <h2 className="mb-4 text-3xl font-black tracking-tight text-white sm:mb-6 sm:text-4xl lg:text-6xl">
         {title}
       </h2>
-      <p className="text-xl text-gray-400 font-medium leading-relaxed">
+      <p className="text-base font-medium leading-relaxed text-gray-400 sm:text-xl">
         {description}
       </p>
     </div>
@@ -271,14 +270,14 @@ function FeatureCard({
       className="group relative"
     >
       <div className="absolute -inset-[0.5px] rounded-[2.5rem] bg-linear-to-r from-blue-500/0 via-blue-500/20 to-purple-500/0 opacity-0 group-hover:opacity-100 transition duration-500" />
-      <div className="relative h-full flex flex-col p-10 rounded-[2.5rem] border border-white/5 bg-white/[0.02] backdrop-blur-3xl transition-all duration-500 group-hover:bg-white/[0.05] group-hover:border-white/10">
-        <div className="mb-8 p-4 w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-blue-400 group-hover:bg-blue-600 group-hover:text-white group-hover:scale-110 transition-all duration-500 shadow-xl">
+      <div className="relative flex h-full flex-col rounded-[2rem] border border-white/5 bg-white/[0.02] p-6 backdrop-blur-3xl transition-all duration-500 group-hover:border-white/10 group-hover:bg-white/[0.05] sm:rounded-[2.5rem] sm:p-10">
+        <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 p-3 text-blue-400 shadow-xl transition-all duration-500 group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white sm:mb-8 sm:h-16 sm:w-16 sm:p-4">
           {icon}
         </div>
-        <h3 className="text-2xl font-bold text-white mb-4 group-hover:text-blue-400 transition-colors">
+        <h3 className="mb-4 text-xl font-bold text-white transition-colors group-hover:text-blue-400 sm:text-2xl">
           {title}
         </h3>
-        <p className="text-gray-400 leading-relaxed text-lg mb-8 flex-grow">
+        <p className="mb-6 flex-grow text-base leading-relaxed text-gray-400 sm:mb-8 sm:text-lg">
           {description}
         </p>
         <div className="flex flex-wrap gap-2">
@@ -306,14 +305,14 @@ function TechFeature({
   description: string;
 }) {
   return (
-    <div className="flex gap-6 group">
-      <div className="flex-shrink-0 mt-1">
+    <div className="group flex gap-4 sm:gap-6">
+      <div className="mt-1 flex-shrink-0">
         <div className="p-3 rounded-xl bg-white/5 border border-white/10 transition-colors group-hover:bg-white/10">
           {icon}
         </div>
       </div>
       <div>
-        <h4 className="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">
+        <h4 className="mb-2 text-lg font-bold text-white transition-colors group-hover:text-blue-400 sm:text-xl">
           {title}
         </h4>
         <p className="text-gray-400 leading-relaxed">{description}</p>

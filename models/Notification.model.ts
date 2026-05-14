@@ -21,6 +21,10 @@ const notificationSchema = new Schema<INotification>(
   { timestamps: { createdAt: true, updatedAt: false } },
 );
 
+notificationSchema.index({ userId: 1, read: 1, createdAt: -1 });
+notificationSchema.index({ email: 1, read: 1, createdAt: -1 });
+notificationSchema.index({ type: 1, createdAt: -1 });
+
 const Notification =
   models?.Notification ||
   model<INotification>("Notification", notificationSchema);

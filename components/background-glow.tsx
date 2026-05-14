@@ -1,8 +1,20 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useIsMobile } from "@/lib/use-mobile";
 
 export function BackgroundGlow() {
+  const isMobile = useIsMobile();
+
+  if (isMobile) {
+    return (
+      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div className="absolute left-[-15%] top-[-10%] h-[32%] w-[55%] rounded-full bg-blue-500/8 blur-[90px]" />
+        <div className="absolute right-[-15%] top-[18%] h-[28%] w-[50%] rounded-full bg-purple-500/8 blur-[90px]" />
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
       <motion.div

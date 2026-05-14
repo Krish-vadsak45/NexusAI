@@ -25,6 +25,11 @@ const historySchema = new Schema<IHistory>(
   },
 );
 
+historySchema.index({ userId: 1, createdAt: -1 });
+historySchema.index({ userId: 1, projectId: 1, createdAt: -1 });
+historySchema.index({ userId: 1, tool: 1, createdAt: -1 });
+historySchema.index({ userId: 1, title: 1 });
+
 const History = models?.History || model<IHistory>("History", historySchema);
 
 export default History;

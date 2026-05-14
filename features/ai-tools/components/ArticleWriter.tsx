@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -34,47 +34,24 @@ import {
   ListChecks,
 } from "lucide-react";
 import { toast } from "sonner";
-import axios from "axios";
 import ReactMarkdown from "react-markdown";
 import { ProjectSelector } from "@/components/ProjectSelector";
 import { TemplateLibrary } from "@/features/templates/components/TemplateLibrary";
 import { SaveTemplateDialog } from "@/features/templates/components/SaveTemplateDialog";
 import { getErrorMessage } from "@/lib/error-utils";
+import {
+  aiJobResponseSchema,
+  articleWriterRequestSchema,
+  type ArticleWriterContent,
+} from "@/lib/api/contracts";
+import { apiGet, apiPost } from "@/lib/api/client";
 
-// Define the structure of our AI response
-interface GeneratedData {
-  article: string;
-  seo: {
-    title: string;
-    description: string;
-    tags: string[];
-  };
-  social: {
-    twitter: string;
-    linkedin: string;
-  };
-  summary: string | string[];
-}
-
-const formSchema = z.object({
-  topic: z.string().min(1, "Topic is required"),
-  keywords: z.string().optional(),
-  tone: z.enum(["professional", "casual", "enthusiastic", "witty"], {
-    required_error: "Tone is required",
-  }),
-  length: z.enum(["short", "medium", "long"], {
-    required_error: "Length is required",
-  }),
-  language: z.enum(["english", "spanish", "french", "german"], {
-    required_error: "Language is required",
-  }),
-});
-
+const formSchema = articleWriterRequestSchema.omit({ projectId: true });
 type FormValues = z.infer<typeof formSchema>;
 
 export function ArticleWriter() {
   const [isLoading, setIsLoading] = useState(false);
-  const [data, setData] = useState<GeneratedData | null>(null);
+  const [data, setData] = useState<ArticleWriterContent | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
@@ -108,17 +85,42 @@ export function ArticleWriter() {
     setData(null);
 
     try {
-      const response = await axios.post("/api/ai/ArticleWriter", values);
-      setData(response.data.content);
+      const projectId =
+        selectedProjectId === "none" ? undefined : selectedProjectId;
+      const createResponse = await apiPost(
+        "/api/ai/article-writer-jobs",
+        { ...values, projectId },
+        aiJobResponseSchema,
+        {
+          headers: {
+            "Idempotency-Key": [
+              values.topic,
+              values.tone,
+              values.length,
+              values.language,
+              projectId || "no-project",
+            ].join(":"),
+          },
+        },
+      );
 
-      // Save to history
-      await axios.post("/api/history", {
-        tool: "Article Writer",
-        title: values.topic,
-        input: values,
-        output: response.data.content,
-        projectId: selectedProjectId === "none" ? undefined : selectedProjectId,
-      });
+      let currentJob = createResponse;
+      while (
+        currentJob.status === "pending" ||
+        currentJob.status === "processing"
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        currentJob = await apiGet(
+          `/api/ai/article-writer-jobs/${currentJob._id}`,
+          aiJobResponseSchema,
+        );
+      }
+
+      if (currentJob.status !== "completed" || !currentJob.result) {
+        throw new Error(currentJob.error || "Background generation failed");
+      }
+
+      setData(currentJob.result);
 
       toast.success("Content generated and saved!");
     } catch (error: unknown) {

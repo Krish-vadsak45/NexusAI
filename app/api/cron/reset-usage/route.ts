@@ -6,10 +6,11 @@ import logger from "@/lib/logger";
 export async function GET(req: Request) {
   try {
     const authHeader = req.headers.get("authorization");
-    if (
-      process.env.CRON_SECRET &&
-      authHeader !== `Bearer ${process.env.CRON_SECRET}`
-    ) {
+    if (!process.env.CRON_SECRET) {
+      logger.error("CRON_SECRET is not configured");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

@@ -9,6 +9,8 @@ export interface IUser {
   emailVerified: boolean;
   phonenumber?: string;
   isAdmin?: boolean;
+  lastLoginMethod?: string;
+  role?: string;
   _id?: mongoose.Types.ObjectId | string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -23,6 +25,8 @@ const userSchema = new Schema<IUser>(
     emailVerified: { type: Boolean, default: false },
     phonenumber: { type: String, index: true },
     isAdmin: { type: Boolean, default: false },
+    lastLoginMethod: { type: String, default: null },
+    role: { type: String, default: "user" },
   },
   {
     timestamps: true,

@@ -7,19 +7,27 @@ import Audit from "@/models/Audit.model";
 import Notification from "@/models/Notification.model";
 import Project from "@/models/Project.model";
 import logger from "@/lib/logger";
+import { inviteRespondRequestSchema } from "@/lib/api/contracts";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
-  const { inviteId, action } = body || {};
-  if (!inviteId || !action)
+  const inviteRespondRateLimit = await checkRateLimit(
+    `invite:respond:${session.user.id}`,
+    20,
+    60 * 60 * 1000,
+  );
+  if (!inviteRespondRateLimit.allowed) {
     return NextResponse.json(
-      { error: "inviteId and action required" },
-      { status: 400 },
+      { error: "Too many invite responses. Please try again later." },
+      { status: 429 },
     );
+  }
+
+  const { inviteId, action } = inviteRespondRequestSchema.parse(await req.json());
 
   await connectToDatabase();
   const invite = await Invite.findById(inviteId);

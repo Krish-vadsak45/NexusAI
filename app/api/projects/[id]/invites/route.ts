@@ -1,15 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import connectToDatabase from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { checkProjectMembership } from "@/lib/acl";
 import Invite from "@/models/Invite.model";
 import Notification from "@/models/Notification.model";
 import crypto from "crypto";
-import nodemailer from "nodemailer";
 import Audit from "@/models/Audit.model";
 import logger from "@/lib/logger";
 import type { ProjectAccessRecord } from "@/lib/shared-types";
+import {
+  inviteCreateRequestSchema,
+  inviteDeleteRequestSchema,
+  invitesListResponseSchema,
+} from "@/lib/api/contracts";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { createMailTransport } from "@/lib/mailer";
+import { hasProjectPermission } from "@/lib/security/permissions";
+import { assertRecentStepUp } from "@/lib/security/step-up";
 
 export async function POST(
   req: NextRequest,
@@ -22,22 +29,26 @@ export async function POST(
   ) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  const session = await auth.api.getSession({ headers: req.headers });
+  const session = await assertRecentStepUp(
+    req.headers,
+    "project:invite:manage",
+  );
   if (!session)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
-  const { email, role } = body;
-
-  const emailSchema = z.string().email("Invalid email format");
-  const result = emailSchema.safeParse(email);
-
-  if (!result.success) {
+  const inviteRateLimit = await checkRateLimit(
+    `invite:create:${session.user.id}`,
+    20,
+    60 * 60 * 1000,
+  );
+  if (!inviteRateLimit.allowed) {
     return NextResponse.json(
-      { error: result.error.errors[0].message },
-      { status: 400 },
+      { error: "Too many invites sent. Please try again later." },
+      { status: 429 },
     );
   }
+
+  const { email, role } = inviteCreateRequestSchema.parse(await req.json());
 
   await connectToDatabase();
   // rate-limit invites per actor (simple in-memory limiter)
@@ -69,6 +80,9 @@ export async function POST(
   if (!allowed)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const projectData = project as ProjectAccessRecord;
+  if (!hasProjectPermission(projectData, member, "project:invite:create")) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   if (
     role === "owner" &&
     member?.role !== "owner" &&
@@ -131,15 +145,7 @@ export async function POST(
   // send email if SMTP configured
   try {
     if (process.env.SMTP_HOST) {
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT) || 587,
-        secure: false,
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      });
+      const transporter = createMailTransport();
 
       const acceptUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/invites/accept?token=${token}`;
 
@@ -186,31 +192,62 @@ export async function GET(
   const invites = await Invite.find({ projectId: id })
     .sort({ createdAt: -1 })
     .limit(100);
-  return NextResponse.json({ invites });
+  return NextResponse.json(
+    invitesListResponseSchema.parse({
+      invites: invites.map((invite) => ({
+        _id: String(invite._id),
+        email: invite.email,
+        role: invite.role,
+        status: invite.status,
+        createdAt: invite.createdAt.toISOString(),
+      })),
+    }),
+  );
 }
 
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth.api.getSession({ headers: req.headers });
+  const session = await assertRecentStepUp(
+    req.headers,
+    "project:invite:manage",
+  );
   if (!session)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
-  const { inviteId } = body || {};
-  if (!inviteId)
-    return NextResponse.json({ error: "inviteId required" }, { status: 400 });
+  const inviteCancelRateLimit = await checkRateLimit(
+    `invite:cancel:${session.user.id}`,
+    30,
+    60 * 60 * 1000,
+  );
+  if (!inviteCancelRateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many invite changes. Please try again later." },
+      { status: 429 },
+    );
+  }
+
+  const { inviteId } = inviteDeleteRequestSchema.parse(await req.json());
 
   await connectToDatabase();
   const { id } = await params;
-  const { allowed, member } = await checkProjectMembership(
+  const { allowed, member, project } = await checkProjectMembership(
     session.user.id,
     id,
     ["editor"],
   );
   if (!allowed)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (
+    !hasProjectPermission(
+      project as ProjectAccessRecord,
+      member,
+      "project:invite:cancel",
+    )
+  ) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const invite = await Invite.findOne({
     _id: inviteId,

@@ -1,9 +1,24 @@
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import connectToDatabase from "@/lib/db";
-import { emailOTP, magicLink, twoFactor } from "better-auth/plugins";
-import nodemailer from "nodemailer";
+import {
+  apiKey,
+  emailOTP,
+  haveIBeenPwned,
+  lastLoginMethod,
+  magicLink,
+  multiSession,
+  twoFactor,
+} from "better-auth/plugins";
+import { passkey } from "@better-auth/passkey";
 import Subscription from "@/models/Subscription.model";
+import { createMailTransport } from "@/lib/mailer";
+import { enforceAuthAbuseProtection } from "@/lib/security/abuse";
+import { createAuditLog } from "@/lib/security/audit";
+import {
+  handleSuspiciousSession,
+  upsertSessionSecurity,
+} from "@/lib/security/session-security";
 
 const connection = await connectToDatabase();
 if (!connection?.db) throw new Error("Failed to connect to database");
@@ -15,11 +30,16 @@ export const auth = betterAuth({
     additionalFields: {
       phonenumber: { type: "string", required: true },
       isAdmin: { type: "boolean", required: false },
+      role: { type: "string", required: false },
     },
   },
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
+  },
+  session: {
+    expiresIn: 60 * 60 * 24 * 7,
+    updateAge: 60 * 60 * 24,
   },
   databaseHooks: {
     user: {
@@ -33,12 +53,72 @@ export const auth = betterAuth({
         },
       },
     },
+    session: {
+      create: {
+        after: async (session, context) => {
+          await upsertSessionSecurity(session, context);
+          await handleSuspiciousSession(
+            session,
+            {
+              email:
+                typeof context?.context?.newSession?.user?.email === "string"
+                  ? context.context.newSession.user.email
+                  : null,
+            },
+            context,
+          );
+        },
+      },
+    },
   },
   socialProviders: {
     google: {
       prompt: "select_account",
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+    },
+  },
+  hooks: {
+    before: async (ctx) => {
+      await enforceAuthAbuseProtection({
+        body:
+          ctx.body && typeof ctx.body === "object"
+            ? (ctx.body as Record<string, unknown>)
+            : undefined,
+        headers: ctx.headers,
+        path: ctx.path,
+      });
+
+      return { context: ctx };
+    },
+    after: async (ctx) => {
+      const session = ctx.context.session;
+      const path = ctx.path ?? "";
+
+      if (
+        session?.user?.id &&
+        (path === "/passkey/verify-registration" ||
+          path === "/passkey/delete-passkey" ||
+          path === "/passkey/update-passkey")
+      ) {
+        const action =
+          path === "/passkey/verify-registration"
+            ? "passkey.create"
+            : path === "/passkey/delete-passkey"
+              ? "passkey.delete"
+              : "passkey.rename";
+
+        await createAuditLog({
+          action,
+          actor: session.user.id,
+          targetType: "account",
+          targetId: session.user.id,
+        });
+      }
+
+      return {
+        context: ctx,
+      };
     },
   },
 
@@ -80,18 +160,13 @@ export const auth = betterAuth({
   // },
 
   plugins: [
+    haveIBeenPwned(),
+    lastLoginMethod({
+      storeInDatabase: true,
+    }),
     magicLink({
       sendMagicLink: async ({ email, url }) => {
-        // Configure nodemailer transporter
-        const transporter = nodemailer.createTransport({
-          host: process.env.SMTP_HOST,
-          port: Number(process.env.SMTP_PORT) || 587,
-          secure: false, // true for 465, false for other ports
-          auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
-          },
-        });
+        const transporter = createMailTransport();
 
         // Email content
         const mailOptions = {
@@ -115,15 +190,7 @@ export const auth = betterAuth({
     emailOTP({
       overrideDefaultEmailVerification: true,
       async sendVerificationOTP({ email, otp, type }) {
-        const transporter = nodemailer.createTransport({
-          host: process.env.SMTP_HOST,
-          port: Number(process.env.SMTP_PORT) || 587,
-          secure: false,
-          auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
-          },
-        });
+        const transporter = createMailTransport();
         if (type === "email-verification") {
           // Email content with OTP
           const mailOptions = {
@@ -173,16 +240,7 @@ export const auth = betterAuth({
       issuer: "NexusAI",
       otpOptions: {
         async sendOTP({ user, otp }) {
-          // send otp to user
-          const transporter = nodemailer.createTransport({
-            host: process.env.SMTP_HOST,
-            port: Number(process.env.SMTP_PORT) || 587,
-            secure: false,
-            auth: {
-              user: process.env.SMTP_USER,
-              pass: process.env.SMTP_PASS,
-            },
-          });
+          const transporter = createMailTransport();
           const mailOptions = {
             from: process.env.SMTP_FROM || "no-reply@example.com",
             to: user.email,
@@ -201,6 +259,29 @@ export const auth = betterAuth({
           await transporter.sendMail(mailOptions);
         },
       },
+    }),
+    multiSession({
+      maximumSessions: 5,
+    }),
+    apiKey({
+      requireName: true,
+      enableMetadata: true,
+      rateLimit: {
+        enabled: true,
+        maxRequests: 5,
+        timeWindow: 24 * 60 * 60 * 1000,
+      },
+      keyExpiration: {
+        maxExpiresIn: 365,
+        minExpiresIn: 1,
+      },
+    }),
+    passkey({
+      rpID:
+        process.env.BETTER_AUTH_PASSKEY_RP_ID ??
+        process.env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, "") ??
+        "localhost",
+      rpName: "NexusAI",
     }),
   ],
 });

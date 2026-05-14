@@ -3,6 +3,26 @@ import logger from "./logger";
 
 const inMemoryStore = new Map<string, number[]>();
 
+export const REDIS_RATE_LIMIT_SCRIPT = `
+local key = KEYS[1]
+local now = tonumber(ARGV[1])
+local windowMs = tonumber(ARGV[2])
+local limit = tonumber(ARGV[3])
+local windowStart = now - windowMs
+
+redis.call('ZREMRANGEBYSCORE', key, 0, windowStart)
+redis.call('ZADD', key, now, tostring(now))
+redis.call('EXPIRE', key, math.floor(windowMs / 1000) + 2)
+
+local count = redis.call('ZCARD', key)
+local earliest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
+if earliest and #earliest > 0 then
+  return { tostring(count), tostring(earliest[2]) }
+else
+  return { tostring(count), "-1" }
+end
+`;
+
 async function checkRateLimitRedis(
   key: string,
   limit = 10,
@@ -10,26 +30,10 @@ async function checkRateLimitRedis(
 ) {
   const now = Date.now();
   const redisKey = `rl:${key}`;
-  const script = `
-local key = KEYS[1]
-local now = tonumber(ARGV[1])
-local windowMs = tonumber(ARGV[2])
-local limit = tonumber(ARGV[3])
-local windowStart = now - windowMs
-redis.call('ZREMRANGEBYSCORE', key, 0, windowStart)all('ZADD', key, now, tostring(now))
-redis.call('EXPIRE', key, math.floor(windowMs/1000) + 2)
-local count = redis.call('ZCARD', key)
-local earliest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
-if earliest and #earliest > 0 then
-  return {tostring(count), tostring(earliest[2])}
-else
-  return {tostring(count), "-1"}
-end
-`;
 
   try {
     const res = (await redisClient.eval(
-      script,
+      REDIS_RATE_LIMIT_SCRIPT,
       1,
       redisKey,
       now.toString(),

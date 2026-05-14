@@ -2,15 +2,32 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { acceptInvite } from "@/lib/invite";
 import logger from "@/lib/logger";
-import nodemailer from "nodemailer";
 import Invite from "@/models/Invite.model";
+import { z } from "zod";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { createMailTransport } from "@/lib/mailer";
+
+const acceptInviteBodySchema = z.object({
+  token: z.string().min(1),
+});
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const { token } = body;
+  const { token } = acceptInviteBodySchema.parse(await req.json());
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const acceptRateLimit = await checkRateLimit(
+    `invite:accept:${session.user.id}`,
+    20,
+    60 * 60 * 1000,
+  );
+  if (!acceptRateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many invite attempts. Please try again later." },
+      { status: 429 },
+    );
+  }
 
   const result = await acceptInvite(token, session.user);
   // email mismatch -> send verification link to invited email with claim token
@@ -20,12 +37,7 @@ export async function POST(req: NextRequest) {
       const invite = await Invite.findOne({ _id: result.inviteId });
       invitedEmail = invite?.email;
       if (invite && process.env.SMTP_HOST) {
-        const transporter = nodemailer.createTransport({
-          host: process.env.SMTP_HOST,
-          port: Number(process.env.SMTP_PORT) || 587,
-          secure: false,
-          auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-        });
+        const transporter = createMailTransport();
         const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/invites/accept?token=${invite.token}&claim=${result.claimToken}`;
         await transporter.sendMail({
           from: process.env.SMTP_FROM || "no-reply@example.com",
@@ -57,6 +69,9 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
+  if (!token) {
+    return NextResponse.json({ error: "Invalid invite token" }, { status: 400 });
+  }
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session) {
     // If not signed in, redirect to sign-in with returnTo
@@ -71,7 +86,7 @@ export async function GET(req: NextRequest) {
   }
 
   const claim = url.searchParams.get("claim") || undefined;
-  const result = await acceptInvite(token!, session.user, claim);
+  const result = await acceptInvite(token, session.user, claim);
   if (result.error === "email_mismatch" && result.claimToken) {
     // If the user followed the verify link, they should be allowed; otherwise show error
     return NextResponse.json({ error: "email_mismatch" }, { status: 400 });

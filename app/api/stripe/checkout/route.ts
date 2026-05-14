@@ -1,17 +1,19 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { stripe, PLAN_ID_TO_PRICE_ID } from "@/lib/stripe";
 import Subscription from "@/models/Subscription.model";
 import connectToDatabase from "@/lib/db";
 import logger from "@/lib/logger";
+import { assertRecentStepUp } from "@/lib/security/step-up";
+import { createAuditLog } from "@/lib/security/audit";
 
 export async function POST(req: Request) {
   try {
     await connectToDatabase();
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
+    const session = await assertRecentStepUp(
+      await headers(),
+      "billing:manage",
+    );
 
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -41,6 +43,13 @@ export async function POST(req: Request) {
 
         // Optional: Update local DB immediately or wait for webhook
         // We'll wait for the webhook to handle the status change to 'past_due' or 'cancelled'
+        await createAuditLog({
+          action: "billing.cancel_at_period_end",
+          actor: session.user.id,
+          targetType: "subscription",
+          targetId: subscription.stripeSubscriptionId,
+          data: { planId },
+        });
 
         return NextResponse.json({
           url: "/dashboard",
@@ -76,6 +85,14 @@ export async function POST(req: Request) {
             subscription: subscription.stripeSubscriptionId,
           },
         },
+      });
+
+      await createAuditLog({
+        action: "billing.portal_update",
+        actor: session.user.id,
+        targetType: "subscription",
+        targetId: subscription.stripeSubscriptionId,
+        data: { planId },
       });
 
       return NextResponse.json({ url: portalSession.url });
@@ -120,9 +137,24 @@ export async function POST(req: Request) {
       },
     });
 
+    await createAuditLog({
+      action: "billing.checkout.create",
+      actor: session.user.id,
+      targetType: "checkout_session",
+      targetId: checkoutSession.id,
+      data: { planId },
+    });
+
     return NextResponse.json({ url: checkoutSession.url });
   } catch (error) {
     logger.error({ err: error }, "Stripe Checkout Error");
+    if (error instanceof Error) {
+      const lower = error.message.toLowerCase();
+      if (lower.includes("step-up verification required")) {
+        return NextResponse.json({ error: error.message }, { status: 403 });
+      }
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 },

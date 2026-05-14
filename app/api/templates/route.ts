@@ -7,6 +7,11 @@ import { headers } from "next/headers";
 import redis from "@/lib/redisClient";
 import { getErrorMessage } from "@/lib/error-utils";
 import logger from "@/lib/logger";
+import {
+  buildTemplateCacheKey,
+  buildTemplateQuery,
+  isTemplateQueryCacheable,
+} from "@/lib/template-cache";
 
 const TEMPLATES_CACHE_TTL = 3600; // 1 hour
 const TEMPLATES_STALE_THRESHOLD = 300; // 5 minutes
@@ -14,50 +19,15 @@ const TEMPLATES_STALE_THRESHOLD = 300; // 5 minutes
 // In-Memory map for request coalescing against template queries
 const inFlightTemplateRequests = new Map<string, Promise<unknown>>();
 
-type TemplateSession = {
-  user: {
-    id: string;
-  };
-} | null;
-
-function buildTemplateQuery(
-  category: string | null,
-  search: string | null,
-  filter: string | null,
-  session: TemplateSession,
-) {
-  const query: Record<string, unknown> = {};
-
-  if (category) {
-    query.category = category;
-  }
-
-  if (search) {
-    query.$text = { $search: search };
-  }
-
-  // Filter logic
-  if (filter === "mine" && session) {
-    query.userId = session.user.id;
-  } else if (filter === "public" || !session) {
-    query.isPublic = true;
-  } else {
-    // Default: show public OR mine for authenticated users
-    query.$or = [{ isPublic: true }, { userId: session.user.id }];
-  }
-  return query;
-}
-
 async function fetchAndCacheTemplates(
   query: Record<string, unknown>,
   limit: number,
   page: number,
-  cacheKey: string,
+  cacheKey?: string,
 ) {
   // --- CACHE STAMPEDE PREVENTION ---
-  const inFlightKey = cacheKey;
-  if (inFlightTemplateRequests.has(inFlightKey)) {
-    return inFlightTemplateRequests.get(inFlightKey);
+  if (cacheKey && inFlightTemplateRequests.has(cacheKey)) {
+    return inFlightTemplateRequests.get(cacheKey);
   }
 
   const fetchPromise = (async () => {
@@ -88,12 +58,14 @@ async function fetchAndCacheTemplates(
         cachedAt: Date.now(),
       };
 
-      await redis.set(
-        cacheKey,
-        JSON.stringify(envelope),
-        "EX",
-        TEMPLATES_CACHE_TTL,
-      );
+      if (cacheKey) {
+        await redis.set(
+          cacheKey,
+          JSON.stringify(envelope),
+          "EX",
+          TEMPLATES_CACHE_TTL,
+        );
+      }
       return result;
     } catch (e) {
       logger.error(
@@ -102,17 +74,21 @@ async function fetchAndCacheTemplates(
       );
       throw e;
     } finally {
-      inFlightTemplateRequests.delete(inFlightKey);
+      if (cacheKey) {
+        inFlightTemplateRequests.delete(cacheKey);
+      }
     }
   })();
 
-  inFlightTemplateRequests.set(inFlightKey, fetchPromise);
+  if (cacheKey) {
+    inFlightTemplateRequests.set(cacheKey, fetchPromise);
+  }
   return fetchPromise;
 }
 
 async function invalidateTemplatesCache() {
   try {
-    const keys = await redis.keys("templates:cat:*");
+    const keys = await redis.keys("templates:*");
     if (keys.length > 0) {
       await redis.del(...keys);
     }
@@ -211,11 +187,19 @@ export async function GET(req: NextRequest) {
     const page = Number.parseInt(searchParams.get("page") || "1", 10);
 
     const query = buildTemplateQuery(category, search, filter, session);
-    const cacheKey =
-      "templates:cat:" + (category || "all") + ":p:" + page + ":l:" + limit;
-    const isCacheable = (filter === "public" || !filter) && !search;
+    const isCacheable = isTemplateQueryCacheable(search);
+    const cacheKey = isCacheable
+      ? buildTemplateCacheKey({
+          category,
+          filter,
+          limit,
+          page,
+          search,
+          session,
+        })
+      : undefined;
 
-    if (isCacheable) {
+    if (cacheKey) {
       const cached = await redis.get(cacheKey);
       if (cached) {
         const envelope = JSON.parse(cached);

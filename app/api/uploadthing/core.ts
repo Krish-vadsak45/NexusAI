@@ -20,19 +20,15 @@ export const ourFileRouter = {
         if (!session) {
           throw new Error("Unauthorized");
         }
-        logger.debug(
-          { userId: session.user.id },
-          "UploadThing session verified",
-        );
         return { userId: session.user.id };
       } catch (err) {
-        logger.error({ err }, "UploadThing middleware error");
+        logger.warn("UploadThing authentication failed");
         throw err;
       }
     })
     .onUploadComplete(async ({ metadata, file }) => {
       logger.info(
-        { userId: metadata.userId, fileUrl: file.ufsUrl },
+        { userId: metadata.userId, fileKey: file.key },
         "UploadThing upload complete",
       );
       return { uploadedBy: metadata.userId };

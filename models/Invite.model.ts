@@ -38,5 +38,9 @@ const inviteSchema = new Schema<IInvite>(
   { timestamps: true },
 );
 
+inviteSchema.index({ projectId: 1, status: 1, createdAt: -1 });
+inviteSchema.index({ email: 1, status: 1, expiresAt: 1 });
+inviteSchema.index({ invitedBy: 1, createdAt: -1 });
+
 const Invite = models?.Invite || model<IInvite>("Invite", inviteSchema);
 export default Invite;

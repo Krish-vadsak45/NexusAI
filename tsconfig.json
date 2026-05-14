@@ -19,6 +19,13 @@
       }
     ],
     "paths": {
+      "@/lib/auth": ["./features/auth/server/auth.ts"],
+      "@/lib/auth-client": ["./features/auth/client/auth-client.ts"],
+      "@/lib/admin": ["./features/admin/server/admin.ts"],
+      "@/lib/admin-queries": ["./features/admin/server/admin-queries.ts"],
+      "@/lib/acl": ["./features/projects/server/acl.ts"],
+      "@/lib/invite": ["./features/projects/server/invite.ts"],
+      "@/lib/plans": ["./features/billing/plans.ts"],
       "@/*": ["./*"]
     }
   },

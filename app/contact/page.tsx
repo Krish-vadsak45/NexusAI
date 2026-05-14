@@ -134,11 +134,11 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black pt-24 pb-20 px-6 relative overflow-hidden">
+    <div className="relative min-h-screen overflow-hidden bg-black px-4 pb-16 pt-20 sm:px-6 sm:pb-20 sm:pt-24">
       {/* Decorative Background */}
       <div className="absolute top-0 left-0 w-full h-full -z-10 opacity-30">
-        <div className="absolute top-[10%] left-[10%] w-[500px] h-[500px] bg-blue-600/20 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[10%] right-[10%] w-[400px] h-[400px] bg-purple-600/20 blur-[120px] rounded-full" />
+        <div className="absolute left-[10%] top-[10%] h-[280px] w-[280px] rounded-full bg-blue-600/20 blur-[120px] sm:h-[500px] sm:w-[500px]" />
+        <div className="absolute bottom-[10%] right-[10%] h-[220px] w-[220px] rounded-full bg-purple-600/20 blur-[120px] sm:h-[400px] sm:w-[400px]" />
       </div>
 
       <div className="max-w-4xl mx-auto relative z-10">
@@ -161,20 +161,20 @@ export default function ContactPage() {
           onValueChange={setActiveTab}
           className="w-full"
         >
-          <div className="flex justify-center mb-12">
-            <TabsList className="bg-white/5 border border-white/10 p-1.5 h-14 rounded-2xl backdrop-blur-2xl relative">
+        <div className="mb-10 flex justify-center sm:mb-12">
+            <TabsList className="relative grid h-auto w-full max-w-xl grid-cols-1 gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 backdrop-blur-2xl sm:h-14 sm:grid-cols-[1fr_auto_1fr] sm:gap-0 sm:p-1.5">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl -z-10 blur-xl opacity-50" />
               <TabsTrigger
                 value="contact"
-                className="rounded-xl px-10 text-sm font-bold data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-blue-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/20 transition-all flex items-center gap-2"
+                className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-blue-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/20 sm:px-10"
               >
                 <Mail className="h-4 w-4" />
                 Contact Us
               </TabsTrigger>
-              <div className="w-px h-6 bg-white/10 mx-1 self-center" />
+              <div className="mx-1 hidden h-6 w-px self-center bg-white/10 sm:block" />
               <TabsTrigger
                 value="feedback"
-                className="rounded-xl px-10 text-sm font-bold data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-purple-500/20 transition-all flex items-center gap-2"
+                className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-purple-500/20 sm:px-10"
               >
                 <Heart className="h-4 w-4" />
                 Feedback
@@ -191,7 +191,7 @@ export default function ContactPage() {
               transition={{ duration: 0.3 }}
             >
               <TabsContent value="contact" className="mt-0">
-                <Card className="bg-white/5 border-white/10 backdrop-blur-2xl shadow-2xl overflow-hidden rounded-3xl">
+                <Card className="overflow-hidden rounded-3xl border-white/10 bg-white/5 shadow-2xl backdrop-blur-2xl">
                   <div className="absolute top-0 left-0 w-full h-1 bg-blue-600" />
                   <CardHeader>
                     <CardTitle className="text-2xl text-white flex items-center gap-2">
@@ -207,7 +207,7 @@ export default function ContactPage() {
                       onSubmit={handleSubmitContact(onContactSubmit)}
                       className="space-y-6"
                     >
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
                         <div className="space-y-2">
                           <Label htmlFor="name" className="text-white/70">
                             Full Name
@@ -278,7 +278,7 @@ export default function ContactPage() {
                           id="message"
                           {...registerContact("message")}
                           placeholder="Tell us what's on your mind..."
-                          className="bg-white/5 border-white/10 min-h-[150px] text-white focus:border-blue-500 transition-all rounded-xl resize-none"
+                          className="min-h-[140px] resize-none rounded-xl border-white/10 bg-white/5 text-white transition-all focus:border-blue-500 sm:min-h-[150px]"
                         />
                         {contactErrors.message && (
                           <p className="text-xs text-red-400 mt-1">
@@ -290,7 +290,7 @@ export default function ContactPage() {
                       <Button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-xl shadow-[0_0_20px_rgba(37,99,235,0.3)] transition-all active:scale-[0.98]"
+                        className="h-12 w-full rounded-xl bg-blue-600 text-base font-bold text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] transition-all hover:bg-blue-700 active:scale-[0.98] sm:h-14 sm:text-lg"
                       >
                         {isSubmitting ? "Sending..." : "Send Message"}
                         {!isSubmitting && <Send className="ml-2 h-5 w-5" />}
@@ -301,7 +301,7 @@ export default function ContactPage() {
               </TabsContent>
 
               <TabsContent value="feedback" className="mt-0">
-                <Card className="bg-white/5 border-white/10 backdrop-blur-2xl shadow-2xl overflow-hidden rounded-3xl">
+                <Card className="overflow-hidden rounded-3xl border-white/10 bg-white/5 shadow-2xl backdrop-blur-2xl">
                   <div className="absolute top-0 left-0 w-full h-1 bg-purple-600" />
                   <CardHeader>
                     <CardTitle className="text-2xl text-white flex items-center gap-2">
@@ -317,7 +317,7 @@ export default function ContactPage() {
                       onSubmit={handleSubmitFeedback(onFeedbackSubmit)}
                       className="space-y-6"
                     >
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
                         <div className="space-y-2">
                           <Label htmlFor="f-name" className="text-white/70">
                             Name
@@ -354,13 +354,13 @@ export default function ContactPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3">
                         <div className="space-y-2">
                           <Label className="text-white/70">
                             Overall Rating
                           </Label>
                           <div className="flex flex-col gap-2">
-                            <div className="flex bg-white/5 border border-white/10 p-1.5 rounded-xl h-12">
+                            <div className="flex h-12 rounded-xl border border-white/10 bg-white/5 p-1.5">
                               {[1, 2, 3, 4, 5].map((star) => (
                                 <button
                                   key={star}
@@ -510,7 +510,7 @@ export default function ContactPage() {
                           id="feedback"
                           {...registerFeedback("feedback")}
                           placeholder="What would you like to see improved?"
-                          className="bg-white/5 border-white/10 min-h-[120px] text-white focus:border-purple-500 transition-all rounded-xl resize-none"
+                          className="min-h-[120px] resize-none rounded-xl border-white/10 bg-white/5 text-white transition-all focus:border-purple-500"
                         />
                         {feedbackErrors.feedback && (
                           <p className="text-xs text-red-400 mt-1">
@@ -522,7 +522,7 @@ export default function ContactPage() {
                       <Button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-full h-14 bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg rounded-xl shadow-[0_0_20px_rgba(147,51,234,0.3)] transition-all active:scale-[0.98]"
+                        className="h-12 w-full rounded-xl bg-purple-600 text-base font-bold text-white shadow-[0_0_20px_rgba(147,51,234,0.3)] transition-all hover:bg-purple-700 active:scale-[0.98] sm:h-14 sm:text-lg"
                       >
                         {isSubmitting ? "Submitting..." : "Submit Feedback"}
                       </Button>
@@ -535,10 +535,10 @@ export default function ContactPage() {
         </Tabs>
 
         {/* Info Blocks */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-24">
+        <div className="mt-16 grid grid-cols-1 gap-6 sm:mt-24 md:grid-cols-3 md:gap-8">
           <motion.div
             whileHover={{ y: -5 }}
-            className="p-8 bg-white/5 border border-white/10 rounded-3xl flex flex-col items-center text-center backdrop-blur-xl relative group overflow-hidden"
+            className="group relative flex flex-col items-center overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-xl sm:p-8"
           >
             <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="h-14 w-14 bg-blue-600/10 rounded-2xl flex items-center justify-center mb-6 border border-blue-500/20 group-hover:scale-110 transition-transform">
@@ -558,7 +558,7 @@ export default function ContactPage() {
 
           <motion.div
             whileHover={{ y: -5 }}
-            className="p-8 bg-white/5 border border-white/10 rounded-3xl flex flex-col items-center text-center backdrop-blur-xl relative group overflow-hidden"
+            className="group relative flex flex-col items-center overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-xl sm:p-8"
           >
             <div className="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="h-14 w-14 bg-purple-600/10 rounded-2xl flex items-center justify-center mb-6 border border-purple-500/20 group-hover:scale-110 transition-transform">
@@ -575,7 +575,7 @@ export default function ContactPage() {
 
           <motion.div
             whileHover={{ y: -5 }}
-            className="p-8 bg-white/5 border border-white/10 rounded-3xl flex flex-col items-center text-center backdrop-blur-xl relative group overflow-hidden"
+            className="group relative flex flex-col items-center overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-xl sm:p-8"
           >
             <div className="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="h-14 w-14 bg-emerald-600/10 rounded-2xl flex items-center justify-center mb-6 border border-emerald-500/20 group-hover:scale-110 transition-transform">

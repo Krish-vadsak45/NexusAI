@@ -4,6 +4,11 @@ import mongoose from "mongoose";
 import Usage from "@/models/Usage.model";
 import Subscription from "@/models/Subscription.model";
 import DailyUsage from "@/models/DailyUsage.model";
+import {
+  getStartOfUtcDay,
+  shouldResetDailyUsage,
+  shouldResetMonthlyTokens,
+} from "./usage-helpers";
 
 // Map feature names to their limit keys in PLANS and usage keys in Usage model
 export const FEATURE_LIMIT_MAP = {
@@ -52,9 +57,7 @@ export async function checkUsage(userId: string, feature: FeatureName) {
 
   // 3. Get or Create Usage Record with atomic reset if new day
   const now = new Date();
-  const startOfToday = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  );
+  const startOfToday = getStartOfUtcDay(now);
 
   let usage = await Usage.findOne({ userId });
 
@@ -63,15 +66,7 @@ export async function checkUsage(userId: string, feature: FeatureName) {
   } else {
     // Check if daily reset is needed (using UTC to be consistent)
     const usageDate = new Date(usage.date);
-    const startOfUsageDate = new Date(
-      Date.UTC(
-        usageDate.getUTCFullYear(),
-        usageDate.getUTCMonth(),
-        usageDate.getUTCDate(),
-      ),
-    );
-
-    if (startOfToday > startOfUsageDate) {
+    if (shouldResetDailyUsage(now, usageDate)) {
       // New day reset
       usage = await Usage.findOneAndUpdate(
         { userId },
@@ -95,10 +90,7 @@ export async function checkUsage(userId: string, feature: FeatureName) {
 
     // Monthly Token Reset
     const lastTokenReset = new Date(usage.lastTokenReset);
-    const oneMonthAgo = new Date(now);
-    oneMonthAgo.setMonth(now.getMonth() - 1);
-
-    if (lastTokenReset < oneMonthAgo) {
+    if (shouldResetMonthlyTokens(now, lastTokenReset)) {
       usage = await Usage.findOneAndUpdate(
         { userId },
         {
@@ -164,9 +156,7 @@ export async function checkAndIncrementUsage(
 
   // 2. Ensure Usage Record Exists & Resets are Applied
   const now = new Date();
-  const startOfToday = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  );
+  const startOfToday = getStartOfUtcDay(now);
 
   let usage = await Usage.findOne({ userId });
 
@@ -175,15 +165,7 @@ export async function checkAndIncrementUsage(
   } else {
     // Check Day Reset
     const usageDate = new Date(usage.date);
-    const startOfUsageDate = new Date(
-      Date.UTC(
-        usageDate.getUTCFullYear(),
-        usageDate.getUTCMonth(),
-        usageDate.getUTCDate(),
-      ),
-    );
-
-    if (startOfToday > startOfUsageDate) {
+    if (shouldResetDailyUsage(now, usageDate)) {
       usage = await Usage.findOneAndUpdate(
         { userId },
         {
@@ -206,10 +188,7 @@ export async function checkAndIncrementUsage(
 
     // Check Token Reset
     const lastTokenReset = new Date(usage.lastTokenReset);
-    const oneMonthAgo = new Date(now);
-    oneMonthAgo.setMonth(now.getMonth() - 1);
-
-    if (lastTokenReset < oneMonthAgo) {
+    if (shouldResetMonthlyTokens(now, lastTokenReset)) {
       usage = await Usage.findOneAndUpdate(
         { userId },
         {
@@ -273,9 +252,7 @@ export async function revertFeatureUsage(userId: string, feature: FeatureName) {
 
   // Decrement daily history count
   const now = new Date();
-  const startOfToday = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  );
+  const startOfToday = getStartOfUtcDay(now);
 
   await DailyUsage.findOneAndUpdate(
     { userId, date: startOfToday, feature },
@@ -306,9 +283,7 @@ export async function recordUsageResult(
   }
 
   const now = new Date();
-  const startOfToday = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  );
+  const startOfToday = getStartOfUtcDay(now);
 
   const update: {
     $inc: {
@@ -360,9 +335,7 @@ export async function incrementUsage(
 
   // 2. Log Historical Daily Usage (DailyUsage Model)
   const now = new Date();
-  const startOfToday = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  );
+  const startOfToday = getStartOfUtcDay(now);
 
   const dailyInc: Record<string, unknown> = {
     count: 1,
@@ -448,19 +421,9 @@ export async function getUsageSummary(userId: string) {
     0,
   );
 
-  const startOfToday = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  );
+  const startOfToday = getStartOfUtcDay(now);
   const usageDate = new Date(usage.date);
-  const startOfUsageDate = new Date(
-    Date.UTC(
-      usageDate.getUTCFullYear(),
-      usageDate.getUTCMonth(),
-      usageDate.getUTCDate(),
-    ),
-  );
-
-  if (startOfToday > startOfUsageDate) {
+  if (shouldResetDailyUsage(now, usageDate)) {
     usage = await Usage.findOneAndUpdate(
       { userId },
       {

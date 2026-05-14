@@ -24,7 +24,7 @@ export default function AboutPage() {
       </div>
 
       {/* Hero Section */}
-      <section className="relative z-10 pt-20 pb-20 sm:pt-20 sm:pb-24 overflow-hidden">
+      <section className="relative z-10 overflow-hidden pb-16 pt-16 sm:pb-24 sm:pt-20">
         <div className="container mx-auto px-4 text-center relative">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/5 bg-white/5 px-3 py-1 mb-8 backdrop-blur-sm animate-fade-in-up hover:bg-white/10 transition-colors cursor-default">
             <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
@@ -33,8 +33,8 @@ export default function AboutPage() {
             </span>
           </div>
 
-          <h1 className="mx-auto max-w-5xl text-5xl sm:text-7xl lg:text-8xl font-bold tracking-tight text-white mb-8">
-            <span className="block text-gray-400 mb-2 text-2xl sm:text-4xl font-normal tracking-normal uppercase">
+          <h1 className="mx-auto mb-8 max-w-5xl text-4xl font-bold tracking-tight text-white sm:text-6xl lg:text-8xl">
+            <span className="mb-2 block text-xl font-normal uppercase tracking-normal text-gray-400 sm:text-3xl">
               We are NexusAI
             </span>
             Building the{" "}
@@ -45,7 +45,7 @@ export default function AboutPage() {
             for Intelligence
           </h1>
 
-          <p className="mx-auto max-w-2xl text-lg sm:text-xl text-gray-400 mb-12 leading-relaxed">
+          <p className="mx-auto mb-10 max-w-2xl text-base leading-relaxed text-gray-400 sm:mb-12 sm:text-xl">
             We&apos;re a team of researchers, engineers, and artists united by a
             single mission: to democratize access to state-of-the-art artificial
             intelligence, making the impossible creative.
@@ -73,10 +73,10 @@ export default function AboutPage() {
       {/* Stats Board */}
       <section className="relative z-10 py-12">
         <div className="container mx-auto px-4">
-          <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-8 sm:p-12 overflow-hidden relative group">
+          <div className="group relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl sm:p-12">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-violet-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 relative z-10">
+            <div className="relative z-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 md:gap-8 lg:gap-12">
               {[
                 { label: "Active Users", value: "100k+", icon: Users },
                 { label: "Models Deployed", value: "50+", icon: Cpu },
@@ -85,12 +85,12 @@ export default function AboutPage() {
               ].map((stat, i) => (
                 <div
                   key={i}
-                  className="flex flex-col items-center justify-center text-center space-y-2 p-4 rounded-2xl hover:bg-white/10 hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/20 border border-transparent hover:border-white/10 transition-all duration-300 cursor-default group"
+                  className="group flex cursor-default flex-col items-center justify-center space-y-2 rounded-2xl border border-transparent p-4 text-center transition-all duration-300 hover:scale-105 hover:border-white/10 hover:bg-white/10 hover:shadow-2xl hover:shadow-blue-500/20"
                 >
                   <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center mb-2 text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-colors duration-300">
                     <stat.icon className="h-5 w-5" />
                   </div>
-                  <div className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
+                  <div className="text-2xl font-bold tracking-tight text-white sm:text-4xl">
                     {stat.value}
                   </div>
                   <div className="text-sm font-medium text-gray-500 uppercase tracking-widest group-hover:text-gray-300 transition-colors">
@@ -104,35 +104,35 @@ export default function AboutPage() {
       </section>
 
       {/* Bento Grid Values */}
-      <section className="relative z-10 py-24 sm:py-32">
+      <section className="relative z-10 py-16 sm:py-24 lg:py-32">
         <div className="container mx-auto px-4">
-          <div className="mb-20 text-center max-w-3xl mx-auto">
+          <div className="mx-auto mb-12 max-w-3xl text-center sm:mb-20">
             <h2 className="text-sm font-semibold text-blue-400 uppercase tracking-wide mb-3">
               Our Core Principles
             </h2>
-            <h3 className="text-3xl sm:text-5xl font-bold text-white mb-6">
+            <h3 className="mb-6 text-2xl font-bold text-white sm:text-4xl lg:text-5xl">
               Designed for the future
             </h3>
-            <p className="text-xl text-gray-400">
+            <p className="text-base text-gray-400 sm:text-xl">
               Every line of code we write is guided by our commitment to
               performance, security, and developer experience.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-7xl mx-auto">
+          <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 md:grid-cols-3">
             {/* Large Card 1 */}
-            <Card className="md:col-span-2 bg-gradient-to-br from-white/5 to-white/[0.02] border-white/10 p-8 rounded-3xl relative overflow-hidden group hover:border-blue-500/30 hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-1 transition-all duration-500">
-              <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:opacity-30 transition-all duration-700 transform group-hover:scale-110 group-hover:rotate-[24deg]">
-                <Globe className="h-64 w-64 text-blue-500 rotate-12" />
+            <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] p-6 transition-all duration-500 hover:-translate-y-1 hover:border-blue-500/30 hover:shadow-2xl hover:shadow-blue-500/10 md:col-span-2 sm:p-8">
+              <div className="absolute right-0 top-0 p-6 opacity-10 transition-all duration-700 group-hover:rotate-[24deg] group-hover:scale-110 group-hover:opacity-30 sm:p-12">
+                <Globe className="h-32 w-32 rotate-12 text-blue-500 sm:h-64 sm:w-64" />
               </div>
-              <div className="relative z-10 h-full flex flex-col justify-end min-h-[300px]">
+              <div className="relative z-10 flex min-h-[240px] h-full flex-col justify-end sm:min-h-[300px]">
                 <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center mb-6 text-blue-400 backdrop-blur-sm group-hover:bg-blue-500 group-hover:text-white transition-colors duration-300">
                   <Globe className="h-6 w-6 group-hover:animate-spin-slow" />
                 </div>
-                <h4 className="text-2xl font-bold text-white mb-3 group-hover:text-blue-400 transition-colors">
+                <h4 className="mb-3 text-xl font-bold text-white transition-colors group-hover:text-blue-400 sm:text-2xl">
                   Global Edge Network
                 </h4>
-                <p className="text-gray-400 max-w-md text-lg">
+                <p className="max-w-md text-base text-gray-400 sm:text-lg">
                   Deployed across 35 regions worldwide. Our intelligent routing
                   ensures your users connect to the nearest node, guaranteeing
                   &lt;50ms latency globally.
@@ -141,16 +141,16 @@ export default function AboutPage() {
             </Card>
 
             {/* Tall Card 2 */}
-            <Card className="row-span-2 bg-black border-white/10 p-8 rounded-3xl relative overflow-hidden group hover:border-violet-500/30 hover:shadow-2xl hover:shadow-violet-500/10 hover:-translate-y-1 transition-all duration-500 flex flex-col">
+            <Card className="group relative row-span-2 flex flex-col overflow-hidden rounded-3xl border-white/10 bg-black p-6 transition-all duration-500 hover:-translate-y-1 hover:border-violet-500/30 hover:shadow-2xl hover:shadow-violet-500/10 sm:p-8">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,_var(--tw-gradient-stops))] from-violet-500/10 to-transparent group-hover:from-violet-500/20 transition-all duration-500" />
               <div className="relative z-10 h-full flex flex-col">
                 <div className="h-12 w-12 rounded-xl bg-violet-500/20 flex items-center justify-center mb-6 text-violet-400 backdrop-blur-sm group-hover:bg-violet-500 group-hover:text-white transition-colors duration-300">
                   <Shield className="h-6 w-6 group-hover:scale-110 transition-transform duration-300" />
                 </div>
-                <h4 className="text-2xl font-bold text-white mb-3 group-hover:text-violet-400 transition-colors">
+                <h4 className="mb-3 text-xl font-bold text-white transition-colors group-hover:text-violet-400 sm:text-2xl">
                   Zero-Trust Security
                 </h4>
-                <p className="text-gray-400 text-lg mb-8 flex-grow">
+                <p className="mb-8 flex-grow text-base text-gray-400 sm:text-lg">
                   Enterprise-grade security by default. SOC2 Type II compliant,
                   end-to-end encryption, and dedicated private cloud options.
                 </p>
@@ -176,7 +176,7 @@ export default function AboutPage() {
             </Card>
 
             {/* Card 3 */}
-            <Card className="bg-white/[0.03] border-white/10 p-8 rounded-3xl group hover:bg-white/[0.05] hover:border-yellow-500/30 hover:shadow-xl hover:shadow-yellow-500/10 hover:-translate-y-1 transition-all duration-300">
+            <Card className="group rounded-3xl border-white/10 bg-white/[0.03] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-yellow-500/30 hover:bg-white/[0.05] hover:shadow-xl hover:shadow-yellow-500/10 sm:p-8">
               <div className="h-12 w-12 rounded-xl bg-yellow-500/20 flex items-center justify-center mb-6 text-yellow-400 group-hover:bg-yellow-500 group-hover:text-black transition-colors duration-300">
                 <Zap className="h-6 w-6 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-300" />
               </div>
@@ -190,7 +190,7 @@ export default function AboutPage() {
             </Card>
 
             {/* Card 4 */}
-            <Card className="bg-white/[0.03] border-white/10 p-8 rounded-3xl group hover:bg-white/[0.05] hover:border-pink-500/30 hover:shadow-xl hover:shadow-pink-500/10 hover:-translate-y-1 transition-all duration-300">
+            <Card className="group rounded-3xl border-white/10 bg-white/[0.03] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-pink-500/30 hover:bg-white/[0.05] hover:shadow-xl hover:shadow-pink-500/10 sm:p-8">
               <div className="h-12 w-12 rounded-xl bg-pink-500/20 flex items-center justify-center mb-6 text-pink-400 group-hover:bg-pink-500 group-hover:text-white transition-colors duration-300">
                 <Heart className="h-6 w-6 group-hover:scale-125 transition-transform duration-300" />
               </div>
@@ -207,18 +207,18 @@ export default function AboutPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 relative overflow-hidden">
+      <section className="relative overflow-hidden py-16 sm:py-24">
         <div className="container mx-auto px-4 relative z-10">
-          <div className="rounded-[40px] bg-gradient-to-r from-blue-900 to-violet-900 p-12 md:p-24 text-center overflow-hidden relative shadow-2xl shadow-blue-900/20">
+          <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-r from-blue-900 to-violet-900 p-6 text-center shadow-2xl shadow-blue-900/20 sm:p-10 md:rounded-[40px] md:p-16 lg:p-24">
             {/* Decorative circles */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-black/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
 
             <div className="relative z-10 max-w-3xl mx-auto">
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              <h2 className="mb-6 text-3xl font-bold text-white md:text-5xl">
                 Ready to transform your workflow?
               </h2>
-              <p className="text-xl text-blue-100 mb-10 leading-relaxed">
+              <p className="mb-8 text-base leading-relaxed text-blue-100 sm:mb-10 sm:text-xl">
                 Join the thousands of developers and creators building the next
                 generation of applications with NexusAI.
               </p>

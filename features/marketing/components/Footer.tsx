@@ -29,7 +29,7 @@ export function Footer() {
         >
           <div className="lg:col-span-2">
             <Link href="/" className="flex items-center gap-2">
-              <div className="relative h-40 w-40">
+              <div className="relative h-28 w-28 sm:h-32 sm:w-32 md:h-40 md:w-40">
                 <Image
                   src="/logo.png"
                   alt="NexusAI Logo"
@@ -39,7 +39,7 @@ export function Footer() {
                 />
               </div>
             </Link>
-            <p className="mt-4 max-w-xs text-sm text-gray-400 leading-relaxed">
+            <p className="mt-4 max-w-sm text-sm leading-relaxed text-gray-400">
               Empowering creators and developers with the next generation of
               artificial intelligence tools.
             </p>
@@ -85,10 +85,10 @@ export function Footer() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 0.5, duration: 0.5 }}
-          className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/5 pt-8 text-sm text-gray-500 md:flex-row"
+          className="mt-12 flex flex-col items-start gap-4 border-t border-white/5 pt-8 text-sm text-gray-500 md:flex-row md:items-center md:justify-between"
         >
           <p>&copy; 2026 NexusAI Inc. All rights reserved.</p>
-          <div className="flex gap-6">
+          <div className="flex flex-wrap gap-4 sm:gap-6">
             <Link href="#" className="hover:text-gray-300 transition-colors">
               Privacy
             </Link>

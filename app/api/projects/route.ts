@@ -8,6 +8,10 @@ import {
   UnauthorizedError,
   withApiHandler,
 } from "@/lib/errors";
+import {
+  projectCreateRequestSchema,
+  projectListResponseSchema,
+} from "@/lib/api/contracts";
 
 // GET: Fetch all projects for the user with pagination and search
 export const GET = withApiHandler(async (req: Request) => {
@@ -43,11 +47,13 @@ export const GET = withApiHandler(async (req: Request) => {
   const nextCursor =
     projects.length > 0 ? projects[projects.length - 1]._id : null;
 
-  return NextResponse.json({
-    projects,
-    nextCursor,
-    total,
-  });
+  return NextResponse.json(
+    projectListResponseSchema.parse({
+      projects,
+      nextCursor,
+      total,
+    }),
+  );
 });
 
 // POST: Create a new project
@@ -55,7 +61,7 @@ export const POST = withApiHandler(async (req: Request) => {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) throw new UnauthorizedError();
 
-  const { name, description } = await req.json();
+  const { name, description } = projectCreateRequestSchema.parse(await req.json());
 
   if (!name) {
     throw new BadRequestError("Name is required");

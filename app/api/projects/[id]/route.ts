@@ -6,6 +6,8 @@ import connectToDatabase from "@/lib/db";
 import { getOrSetCache, isValidMongoId } from "@/lib/cache-utils";
 import logger from "@/lib/logger";
 import redis from "@/lib/redisClient";
+import { assertRecentStepUp } from "@/lib/security/step-up";
+import { createAuditLog } from "@/lib/security/audit";
 
 export async function GET(
   req: Request,
@@ -63,7 +65,10 @@ export async function DELETE(
 ) {
   const params = await props.params;
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
+    const session = await assertRecentStepUp(
+      await headers(),
+      "project:delete",
+    );
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
 
     await connectToDatabase();
@@ -79,6 +84,16 @@ export async function DELETE(
 
     // Invalidate the specific user's access cache (or any member cache if you have it)
     await redis.del(`project_data:${params.id}:user:${session.user.id}`);
+
+    await createAuditLog({
+      action: "project.delete",
+      actor: session.user.id,
+      targetType: "project",
+      targetId: params.id,
+      data: {
+        projectName: project.name,
+      },
+    });
 
     return NextResponse.json({ message: "Project deleted" });
   } catch (error) {

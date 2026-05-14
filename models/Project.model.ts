@@ -46,5 +46,9 @@ const projectSchema = new Schema<IProject>(
   },
 );
 
+projectSchema.index({ userId: 1, createdAt: -1 });
+projectSchema.index({ "members.userId": 1, updatedAt: -1 });
+projectSchema.index({ userId: 1, name: 1 });
+
 const Project = models?.Project || model<IProject>("Project", projectSchema);
 export default Project;

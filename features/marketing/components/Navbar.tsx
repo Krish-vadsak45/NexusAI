@@ -7,97 +7,101 @@ import Image from "next/image";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const pathname = usePathname();
 
-  const routes: Record<string, string> = {
-    Home: "/",
-    Features: "/features",
-    Pricing: "/pricing",
-    About: "/about",
-    Contact: "/contact",
-  };
+  const routes = [
+    { label: "Home", href: "/" },
+    { label: "Features", href: "/features" },
+    { label: "Pricing", href: "/pricing" },
+    { label: "About", href: "/about" },
+    { label: "Contact", href: "/contact" },
+  ];
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-white/5 bg-black/60 backdrop-blur-xl transition-all duration-300 supports-backdrop-filter:bg-black/60">
-      <div className="absolute bottom-0 left-0 h-px w-full bg-linear-to-r from-transparent via-blue-500/50 to-transparent" />
-
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        {/* Logo Section */}
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="relative h-10 w-32 transition-transform duration-300 group-hover:scale-110">
+    <nav className="navbar-ui sticky top-0 z-50 w-full bg-black backdrop-blur-2xl px-4 pt-4 sm:px-6">
+      <div className=" mx-auto flex h-18 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-5 lg:px-6">
+        <Link href="/" className="group flex min-w-0 items-center gap-3">
+          <div className="relative flex h-11 items-center">
             <Image
               src="/logo-1.png"
               alt="NexusAI Logo"
-              fill
-              sizes="(max-width: 768px) 100vw, 128px"
-              loading="eager"
-              className="object-contain"
+              width={128}
+              height={41}
+              priority
+              className="h-9 w-auto object-contain transition-transform duration-300 group-hover:scale-[1.03]"
             />
           </div>
         </Link>
 
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-1">
-          {["Home", "Features", "Pricing", "About", "Contact"].map((item) => (
-            <Link
-              key={item}
-              href={routes[item] || `/#${item.toLowerCase()}`}
-              className="relative px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors group rounded-full hover:bg-white/5"
-            >
-              {item}
-            </Link>
-          ))}
+        <div className="hidden items-center justify-center md:flex md:flex-1">
+          <div className="flex items-center gap-1 rounded-full border border-white/8 bg-white/[0.03] p-1">
+            {routes.map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={cn(
+                  "navbar-link",
+                  pathname === item.href && "navbar-link-active",
+                )}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
         </div>
 
-        {/* Desktop Auth Buttons */}
-        <div className="hidden md:flex items-center gap-4">
-          <ul className="flex items-center gap-4 list-none">
-            <AuthButtons />
-          </ul>
+        <div className="hidden md:flex md:items-center md:justify-end">
+          <AuthButtons />
         </div>
 
-        {/* Mobile Menu Toggle */}
         <div className="md:hidden">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="text-white hover:bg-white/10"
+            onClick={() => setIsMenuOpen((open) => !open)}
+            aria-label={
+              isMenuOpen ? "Close navigation menu" : "Open navigation menu"
+            }
+            className="h-11 w-11 rounded-full border border-white/10 bg-white/[0.05] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-colors hover:bg-white/[0.09]"
           >
             {isMenuOpen ? (
-              <X className="h-6 w-6" />
+              <X className="h-5 w-5" />
             ) : (
-              <Menu className="h-6 w-6" />
+              <Menu className="h-5 w-5" />
             )}
           </Button>
         </div>
       </div>
 
-      {/* Mobile Navigation Menu */}
       {isMenuOpen && (
-        <div className="md:hidden bg-black/95 backdrop-blur-2xl border-b border-white/5 animate-in slide-in-from-top duration-300">
-          <div className="px-6 py-8 space-y-6">
-            <div className="flex flex-col gap-4">
-              {["Home", "Features", "Pricing", "About", "Contact"].map(
-                (item) => (
-                  <Link
-                    key={item}
-                    href={routes[item] || `/#${item.toLowerCase()}`}
-                    onClick={() => setIsMenuOpen(false)}
-                    className="text-lg font-medium text-gray-300 hover:text-white transition-colors"
-                  >
-                    {item}
-                  </Link>
-                ),
-              )}
+        <div className="mx-auto mt-3 w-full max-w-7xl md:hidden">
+          <div className="navbar-mobile-panel animate-in fade-in-0 slide-in-from-top-2 duration-200">
+            <div className="grid gap-2">
+              {routes.map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  onClick={() => setIsMenuOpen(false)}
+                  className={cn(
+                    "navbar-link flex h-12 items-center justify-between px-4",
+                    pathname === item.href && "navbar-link-active",
+                  )}
+                >
+                  <span>{item.label}</span>
+                  <span className="text-xs uppercase tracking-[0.22em] text-white/30">
+                    0{routes.findIndex((route) => route.href === item.href) + 1}
+                  </span>
+                </Link>
+              ))}
             </div>
 
-            <div className="pt-6 border-t border-white/10">
-              <ul className="flex flex-col gap-4 list-none p-0">
-                <AuthButtons />
-              </ul>
+            <div className="mt-5 border-t border-white/8 pt-5">
+              <AuthButtons />
             </div>
           </div>
         </div>

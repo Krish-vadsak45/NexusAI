@@ -4,6 +4,10 @@ import { auth } from "@/lib/auth";
 import Notification from "@/models/Notification.model";
 import User from "@/models/user.model";
 import Invite from "@/models/Invite.model";
+import {
+  applyNotificationMark,
+  isNotificationMark,
+} from "@/lib/notification-utils";
 
 type NotificationUserSummary = {
   _id: string;
@@ -124,6 +128,9 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json();
   const { id, mark } = body;
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  if (!isNotificationMark(mark)) {
+    return NextResponse.json({ error: "invalid mark" }, { status: 400 });
+  }
 
   await connectToDatabase();
   const n = await Notification.findById(id);
@@ -136,17 +143,6 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  if (mark === "read") n.read = true;
-  else if (mark === "unread") n.read = false;
-  else if (mark === "delete") await n.deleteOne();
-  else {
-    return NextResponse.json({ error: "invalid mark" }, { status: 400 });
-  }
-
-  try {
-    await n.save();
-  } catch {
-    // Silence error
-  }
+  await applyNotificationMark(n, mark);
   return NextResponse.json({ success: true });
 }

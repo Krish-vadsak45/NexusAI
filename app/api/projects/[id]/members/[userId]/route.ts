@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { checkProjectMembership } from "@/lib/acl";
+import { checkProjectMembership, invalidateAclCache } from "@/lib/acl";
+import { createAuditLog } from "@/lib/security/audit";
+import { hasProjectPermission } from "@/lib/security/permissions";
+import { assertRecentStepUp } from "@/lib/security/step-up";
 import type {
   ProjectAccessRecord,
   ProjectMember,
@@ -12,7 +15,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; userId: string }> },
 ) {
-  const session = await auth.api.getSession({ headers: req.headers });
+  const session = await assertRecentStepUp(req.headers, "project:member:role");
   if (!session)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -33,9 +36,10 @@ export async function PATCH(
   if (!allowed)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  // only owner can change roles
   const projectData = project as ProjectAccessRecord;
-  if (requester.role !== "owner" && projectData.userId !== session.user.id)
+  if (
+    !hasProjectPermission(projectData, requester, "project:member:role:update")
+  )
     return NextResponse.json(
       { error: "Only owner can change roles" },
       { status: 403 },
@@ -61,6 +65,19 @@ export async function PATCH(
 
   member.role = role as ProjectRole;
   await project.save();
+
+  await invalidateAclCache(userId, id);
+  await createAuditLog({
+    action: "project.member.role.update",
+    actor: session.user.id,
+    targetType: "project",
+    targetId: id,
+    data: {
+      memberUserId: userId,
+      role,
+    },
+  });
+
   return NextResponse.json({ success: true, member });
 }
 
@@ -83,9 +100,10 @@ export async function DELETE(
   if (!allowed)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  // only owner can remove members
   const projectRecord = project2 as ProjectAccessRecord;
-  if (requester2.role !== "owner" && projectRecord.userId !== session.user.id)
+  if (
+    !hasProjectPermission(projectRecord, requester2, "project:member:remove")
+  )
     return NextResponse.json(
       { error: "Only owner can remove members" },
       { status: 403 },
@@ -113,5 +131,17 @@ export async function DELETE(
 
   projectRecord.members?.splice(memberIndex, 1);
   await project2.save();
+
+  await invalidateAclCache(userId, id);
+  await createAuditLog({
+    action: "project.member.remove",
+    actor: session.user.id,
+    targetType: "project",
+    targetId: id,
+    data: {
+      memberUserId: userId,
+    },
+  });
+
   return NextResponse.json({ success: true });
 }

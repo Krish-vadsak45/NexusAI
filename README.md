@@ -1,90 +1,112 @@
 # NexusAI 🤖✨
 
-**NexusAI** is an advanced, enterprise-ready Generative AI SaaS platform. Built with a "Security-First" and "High-Availability" mindset, it provides a suite of professional AI tools powered by **Next.js 16**, **React 19**, and a sophisticated **Multi-Layer Redis Architecture**.
+![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)
+![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript)
+![TailwindCSS](https://img.shields.io/badge/Tailwind-4-38B2AC?style=for-the-badge&logo=tailwind-css)
+![MongoDB](https://img.shields.io/badge/MongoDB-8-47A248?style=for-the-badge&logo=mongodb)
+![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=for-the-badge&logo=redis)
+![Stripe](https://img.shields.io/badge/Stripe-SaaS-635BFF?style=for-the-badge&logo=stripe)
+
+**NexusAI** is a high-performance, enterprise-ready Generative AI SaaS platform engineered for scalability, security, and extreme availability. Powered by a sophisticated **Multi-Layer Defensive Caching Architecture**, it offers a unified suite of professional AI tools designed to survive viral growth and adversarial load.
 
 ---
 
-## 🎯 The Problem & Our Solution
+## 💎 Core Features & Engineering Solutions
 
-### The Fragmented AI Landscape
+### 🧠 Unified AI Powerhouse
+NexusAI consolidates the fragmented AI landscape into one seamless, high-performance command center.
+- **📝 Article Writer & SEO Engine**: Generates comprehensive content packages including Markdown articles, SEO meta-data, and automated Twitter/LinkedIn threads via **Gemini 2.5 Flash**.
+- **🎨 Visual Intelligence**: Professional-grade **Background Removal**, **Object Removal**, and **AI Image Generation** (via Pollinations AI).
+- **💻 Developer Suite**: Context-aware **Code Generation** and **Resume Reviewer** with AI-driven optimization feedback.
+- **🔍 Content Processing**: High-speed **Text Summarization** and **Catchy Title Generation**.
 
-Today, users and developers face a "Subscription Fatigue" and fragmented workflow—switching between 10+ different AI sites for text, code, images, and resume reviews. Most open-source AI wrappers are also vulnerable to **Database DDOS**, **Cache Stampedes**, and **OOM crashes** when they go viral.
+### 🛡️ Enterprise-Grade Authentication (Better-Auth)
+Hardened security layer protecting user data and intellectual property.
+- **Multi-Factor Security**: Native **Two-Factor Authentication (2FA)** and **Magic Link** support for passwordless entry.
+- **Social Integration**: Seamless **Google OAuth** integration with automatic profile provisioning.
+- **RBAC & ACL**: Granular **Role-Based Access Control** ensuring data isolation between Free, Pro, and Premium tiers.
 
-### Our Solution: The Nexus Engine
+### ⚡ The "Indestructible" Redis & Caching Layer
+We solve the critical scalability bottlenecks that cause standard SaaS platforms to crash under load.
+- **🛡️ Bloom Filter Firewall (L3 Defense)**: Uses Redis Stack Bloom Filters to check for resource existence before hitting the database, neutralizing **Cache Penetration** attacks.
+- **⛓️ Request Coalescing (Stampede Protection)**: Ensures that only **one** backend query is executed even if thousands of concurrent users hit an expired cache key simultaneously.
+- **⚡ L1/L2 Hybrid Strategy**: 
+  - **L1 (In-Memory)**: Sub-microsecond access for hyper-frequent reads within the node process.
+  - **L2 (Distributed Redis)**: Global persistence with **Intelligent TTL Jitter** to prevent synchronized cache expirations (Thundering Herd effect).
+- **📉 Storage Optimization**: Field projection and payload compression keep the Redis memory footprint 90% lighter than standard implementations.
+- **🔄 Stale-While-Revalidate (SWR)**: Background revalidation logic for metrics and dashboard data, ensuring zero-latency user experiences while keeping data fresh.
 
-NexusAI solves this by consolidating the most powerful AI capabilities into a **single, unified command center**.
+### 📊 Professional Data Management
+- **📑 Ubiquitous Pagination & Cursors**: Every list—from **Admin Users** to **Project Members** and **Tool History**—is protected by sophisticated **Cursor-based** or **Offset-based pagination**. This prevents OOM (Out of Memory) crashes and ensures snappy performance regardless of dataset size.
+- **🔎 Global Search & Filtering**: Sub-second search across projects, users, and AI history powered by optimized MongoDB indexes and regex escaping.
+- **⏳ Real-Time Usage Monitoring**: Polling-based usage dashboard with a 30s heartbeat, providing users with a "live" sense of their remaining quotas.
+- **📁 Advanced Project Workspace**: Multi-user collaboration within "Projects," allowing shared AI assets and team member management with delegated roles.
 
-1. **Vertical Integration**: One subscription (Free/Pro/Premium) gives you access to the entire AI lifecycle—from brainstorming articles to generating code and polishing your professional resume.
-2. **Infrastructure Resilience**: We don't just "wrap" an API. We've built an **Enterprise-Grade Caching Core** using Bloom Filters and Request Coalescing to ensure that the platform stays fast and cost-effective, even under massive concurrent load.
-3. **Usage Guard Intelligence**: Real-time monitoring and automated quota resets ensure fair usage while protecting your API overhead.
-
----
-
-## 🚀 The Multi-Layer Defense Architecture (New v2.0)
-
-Unlike standard SaaS starters, NexusAI is hardened against modern attack vectors and bottlenecks:
-
-- **🛡️ Bloom Filter Firewall:** Protects the database from "Cache Penetration" attacks by blocking requests for non-existent IDs at the edge.
-- **⛓️ Request Coalescing:** Eliminates "Cache Stampedes." If 1,000 users hit an expired key simultaneously, only **one** database query is executed.
-- **⚡ L1/L2 Hybrid Caching:** Data lives in **Process Memory (L1)** for <1ms access and **Redis (L2)** for global persistence.
-- **📉 Intelligent TTL & Jitter:** Prevents "Thundering Herd" database spikes by randomizing cache expiration windows.
-- **📦 Storage Compression:** Uses field projection to keep the Redis memory footprint 90% lighter.
-
----
-
-## 🚀 Features
-
-### 🧠 AI Powerhouse
-
-Access a diverse range of generative tools powered by **LangChain** and **Google Gemini**:
-
-- **📝 Article Writer**: Generate SEO-optimized blog posts and articles.
-- **🎨 Image Generation**: Create stunning visuals from text prompts (via Pollinations AI).
-- **🖼️ Background Removal**: Instantly remove backgrounds from images.
-- **🧹 Object Removal**: Clean up images by removing unwanted objects.
-- **💻 Code Generator**: Generate clean, efficient code snippets in any language.
-- **📄 Resume Reviewer**: Get AI-powered feedback to improve your CV.
-- **🔍 Text Summarizer**: Condense long documents into concise summaries.
-- **🏷️ Title Generator**: Create catchy headlines for your content.
-
-### 💳 Monetization & Usage
-
-- **Tiered Subscriptions**: Free, Pro, and Premium plans integrated via **Stripe**.
-- **Usage Tracking**: Real-time tracking of daily/monthly limits per tool.
-- **Automated Resets**: Cron jobs to reset usage quotas automatically.
-
-### 🛡️ Security & Auth
-
-- **Better-Auth Integration**: Secure authentication with Google OAuth and Email/Password.
-- **Two-Factor Authentication (2FA)**: Enhanced security for user accounts.
-- **Role-Based Access**: Protected routes and API endpoints.
+### 💎 Unique Scalability Solutions
+- **Atomic Usage Guard**: Database-level atomic increments for tool usage tracking, preventing quota overruns during concurrent API bursts.
+- **Automatic Quota Resets**: Intelligent UTC-synchronized cron jobs that reset daily/monthly limits without manual intervention.
+- **Resilient Fallbacks**: Integrated "No-op" cache clients that allow the platform to stay functional even if the Redis cluster is temporarily unreachable.
+- **📧 Intelligent Notification Engine**: Built-in system for project invites and usage alerts, featuring server-side enrichment for associated user data.
 
 ---
 
-## 🛠️ Modern Tech Stack
+## 🛠️ The Nexus Stack
 
-- **Framework**: [Next.js 16 (App Router)](https://nextjs.org/) & [React 19](https://react.dev/)
-- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/) & [Framer Motion](https://www.framer.com/motion/)
-- **Database**: [MongoDB](https://www.mongodb.com/) with Mongoose (Optimized with Lean Queries)
-- **Caching**: [Redis (ioredis)](https://redis.io/) with Bloom Filter support (Redis Stack/Upstash)
-- **Payments**: [Stripe](https://stripe.com/) (Subscription Tiers & Webhooks)
-- **File Storage**: [UploadThing](https://uploadthing.com/) & [ImageKit](https://imagekit.io/)
-- **Logging**: High-performance logging with [Pino](https://github.com/pinojs/pino)
+- **Core:** [Next.js 16 (App Router)](https://nextjs.org/) & [React 19 (Server Components)](https://react.dev/)
+- **Auth:** [Better-Auth](https://better-auth.com/) (Google OAuth, 2FA, Magic Links, Email/Password)
+- **Database:** [MongoDB](https://www.mongodb.com/) + [Mongoose](https://mongoosejs.com/) (Optimized with lean queries and indexing)
+- **Caching:** [Redis (ioredis)](https://redis.io/) + Custom L1 In-Memory Engine
+- **AI Engine:** [LangChain](https://js.langchain.com/) + [Google Gemini 2.5 Flash](https://deepmind.google/technologies/gemini/)
+- **Media:** [UploadThing](https://uploadthing.com/), [ImageKit](https://imagekit.io/), and [Cloudinary](https://cloudinary.com/)
+- **Observability:** [Pino](https://getpino.io/) High-performance JSON logging
 
 ---
 
-## ⚡ Getting Started
+## 📂 Architecture Breakdown
 
-### 1. Environment Configuration
-
-Copy the `.env.example` file to `.env` and fill in your credentials:
-
-```bash
-cp .env.example .env
+```text
+├── app/
+│   ├── api/ai/      # Scalable AI tool endpoints with usage protection
+│   └── (auth)/      # Advanced authentication workflows (2FA, etc.)
+├── features/        # Domain-driven modules (Billing, Projects, Admin)
+├── lib/             # The Core: Cache Engine, ACL, and Utility layer
+├── middleware/      # Global usage guard and security filters
+└── models/          # Optimized Mongoose schemas (Audit, Usage, User)
 ```
 
-### 2. Installation & Build
+---
 
+## ⚡ Deployment & Setup
+
+### 1. Prerequisites
+- Node.js 20+
+- MongoDB Instance
+- Redis Instance (Redis Stack recommended for Bloom Filter support)
+
+### 2. Environment Configuration
+Create a `.env` file with the following keys:
+```bash
+# Core
+MONGODB_URI=
+REDIS_URL=
+
+# Auth
+BETTER_AUTH_SECRET=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# AI & Media
+GEMINI_API_KEY=
+UPLOADTHING_SECRET=
+UPLOADTHING_APP_ID=
+
+# Payments
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+```
+
+### 3. Installation
 ```bash
 npm install
 npm run build
@@ -93,20 +115,9 @@ npm run start
 
 ---
 
-## 📂 Architecture Overview
+## 📜 License & Contribution
 
-```text
-├── app/api/       # Multi-layer cached API endpoints
-├── lib/           # Enterprise Cache Engine, ACL, and Auth Client
-├── middleware/    # Usage quotas and Auth protection
-├── models/        # Mongoose schemas with indexing
-└── components/    # Atomic UI components with Tailwind 4
-```
+NexusAI is built for scale. We welcome contributions that focus on performance optimization and new vertical AI integration.
 
----
+1. Fork → 2. Branch → 3. PR.
 
-## 🤝 Roadmap & Contributing
-
-NexusAI is built for scale. Contributions regarding new AI models or performance optimizations are welcome.
-
-1. Fork it → 2. Branch it → 3. PR it.

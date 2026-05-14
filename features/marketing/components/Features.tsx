@@ -1,3 +1,5 @@
+"use client";
+
 import { Cpu, Globe2, ShieldCheck, Activity } from "lucide-react";
 import { motion } from "framer-motion";
 

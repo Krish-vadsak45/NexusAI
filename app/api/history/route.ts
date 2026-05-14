@@ -3,7 +3,24 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import History from "@/models/History.model";
 import connectToDatabase from "@/lib/db";
-import { UnauthorizedError, withApiHandler } from "@/lib/errors";
+import {
+  historyCreateRequestSchema,
+  historyListQuerySchema,
+  historyListResponseSchema,
+  type HistoryListResponse,
+} from "@/lib/api/contracts";
+import { UnauthorizedError, ValidationError, withApiHandler } from "@/lib/errors";
+
+function serializeHistoryItem(item: Record<string, unknown>) {
+  return {
+    ...item,
+    _id: String(item._id ?? ""),
+    createdAt:
+      item.createdAt instanceof Date
+        ? item.createdAt.toISOString()
+        : String(item.createdAt ?? ""),
+  };
+}
 
 export const POST = withApiHandler(async (req: Request) => {
   const session = await auth.api.getSession({
@@ -14,7 +31,7 @@ export const POST = withApiHandler(async (req: Request) => {
     throw new UnauthorizedError();
   }
 
-  const body = await req.json();
+  const body = historyCreateRequestSchema.parse(await req.json());
   const { tool, title, input, output, projectId } = body;
 
   await connectToDatabase();
@@ -28,7 +45,7 @@ export const POST = withApiHandler(async (req: Request) => {
     output,
   });
 
-  return NextResponse.json(historyItem);
+  return NextResponse.json(serializeHistoryItem(historyItem.toObject()));
 });
 
 export const GET = withApiHandler(async (req: Request) => {
@@ -41,15 +58,19 @@ export const GET = withApiHandler(async (req: Request) => {
   }
 
   const { searchParams } = new URL(req.url);
-  const projectId = searchParams.get("projectId");
-  const cursor = searchParams.get("cursor"); // cursor is the _id of the last item
-
-  let limit = Number.parseInt(searchParams.get("limit") || "12");
-  if (Number.isNaN(limit) || limit < 1) limit = 12;
-  if (limit > 50) limit = 50;
-
-  const tool = searchParams.get("tool");
-  const search = searchParams.get("search");
+  const parsedQuery = historyListQuerySchema.safeParse({
+    projectId: searchParams.get("projectId"),
+    cursor: searchParams.get("cursor"),
+    limit: searchParams.get("limit") || undefined,
+    tool: searchParams.get("tool"),
+    search: searchParams.get("search"),
+  });
+  if (!parsedQuery.success) {
+    throw new ValidationError("Invalid history query", {
+      details: parsedQuery.error.flatten(),
+    });
+  }
+  const { projectId, cursor, limit, tool, search } = parsedQuery.data;
 
   await connectToDatabase();
 
@@ -76,9 +97,15 @@ export const GET = withApiHandler(async (req: Request) => {
   const nextCursor =
     history.length > 0 ? history[history.length - 1]._id : null;
 
-  return NextResponse.json({
-    items: history,
-    nextCursor,
+  const response: HistoryListResponse = {
+    items: history.map((item) =>
+      serializeHistoryItem(item as unknown as Record<string, unknown>),
+    ),
+    nextCursor: nextCursor ? String(nextCursor) : null,
     totalCount,
-  });
+  };
+
+  return NextResponse.json(
+    historyListResponseSchema.parse(response),
+  );
 });
