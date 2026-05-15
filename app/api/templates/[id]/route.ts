@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import connectToDatabase from "@/lib/db";
@@ -7,6 +9,8 @@ import { headers } from "next/headers";
 import { getOrSetCache, isValidMongoId } from "@/lib/cache-utils";
 import { getErrorMessage } from "@/lib/error-utils";
 import redis from "@/lib/redisClient";
+
+
 
 type PopulatedTemplateUser = {
   _id?: string;

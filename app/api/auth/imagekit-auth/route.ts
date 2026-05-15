@@ -1,6 +1,10 @@
+export const dynamic = "force-dynamic";
+
 // File: app/api/upload-auth/route.ts
 import { getUploadAuthParams } from "@imagekit/next/server";
 import logger from "@/lib/logger";
+
+
 
 export async function GET() {
   try {

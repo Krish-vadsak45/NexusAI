@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { stripe, PLAN_ID_TO_PRICE_ID } from "@/lib/stripe";
@@ -6,6 +8,8 @@ import connectToDatabase from "@/lib/db";
 import logger from "@/lib/logger";
 import { assertRecentStepUp } from "@/lib/security/step-up";
 import { createAuditLog } from "@/lib/security/audit";
+
+
 
 export async function POST(req: Request) {
   try {

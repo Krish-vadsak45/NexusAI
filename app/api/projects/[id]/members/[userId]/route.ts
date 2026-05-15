@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/db";
 import { auth } from "@/lib/auth";
@@ -6,6 +8,8 @@ import { createAuditLog } from "@/lib/security/audit";
 import { hasProjectPermission } from "@/lib/security/permissions";
 import { assertRecentStepUp } from "@/lib/security/step-up";
 import type {
+
+
   ProjectAccessRecord,
   ProjectMember,
   ProjectRole,

@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import connectToDatabase from "@/lib/db";
@@ -9,6 +11,8 @@ import Project from "@/models/Project.model";
 import logger from "@/lib/logger";
 import { inviteRespondRequestSchema } from "@/lib/api/contracts";
 import { checkRateLimit } from "@/lib/rateLimit";
+
+
 
 export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });

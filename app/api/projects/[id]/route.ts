@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -8,6 +10,8 @@ import logger from "@/lib/logger";
 import redis from "@/lib/redisClient";
 import { assertRecentStepUp } from "@/lib/security/step-up";
 import { createAuditLog } from "@/lib/security/audit";
+
+
 
 export async function GET(
   req: Request,

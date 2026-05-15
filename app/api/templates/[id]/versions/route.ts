@@ -1,9 +1,13 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import connectToDatabase from "@/lib/db";
 import { getErrorMessage } from "@/lib/error-utils";
 import Template from "@/models/Template.model";
 import { headers } from "next/headers";
+
+
 
 export async function POST(
   req: NextRequest,

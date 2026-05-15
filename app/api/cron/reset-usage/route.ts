@@ -1,7 +1,11 @@
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import connectToDatabase from "@/lib/db";
 import Usage from "@/models/Usage.model";
 import logger from "@/lib/logger";
+
+
 
 export async function GET(req: Request) {
   try {

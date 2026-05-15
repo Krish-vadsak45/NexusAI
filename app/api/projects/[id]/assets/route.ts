@@ -1,8 +1,12 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/db";
 import { auth } from "@/lib/auth";
 import SharedAsset from "@/models/SharedAsset.model";
 import { checkProjectMembership } from "@/lib/acl";
+
+
 
 export async function GET(
   req: NextRequest,

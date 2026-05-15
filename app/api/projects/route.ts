@@ -1,9 +1,13 @@
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import Project from "@/models/Project.model";
 import connectToDatabase from "@/lib/db";
 import {
+
+
   BadRequestError,
   UnauthorizedError,
   withApiHandler,

@@ -1,7 +1,11 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { STEP_UP_LABELS, startStepUpChallenge } from "@/lib/security/step-up";
 import type { StepUpPurpose } from "@/models/StepUpChallenge.model";
+
+
 
 const bodySchema = z.object({
   purpose: z.enum([

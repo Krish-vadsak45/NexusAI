@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/db";
 import { auth } from "@/lib/auth";
@@ -5,6 +7,8 @@ import User from "@/models/user.model";
 import { checkProjectMembership } from "@/lib/acl";
 import logger from "@/lib/logger";
 import type { ProjectAccessRecord, ProjectMember } from "@/lib/shared-types";
+
+
 
 export async function GET(
   req: NextRequest,

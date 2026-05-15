@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -7,6 +9,8 @@ import { getOrSetCache, isValidMongoId } from "@/lib/cache-utils";
 import { getErrorMessage } from "@/lib/error-utils";
 import logger from "@/lib/logger";
 import redis from "@/lib/redisClient";
+
+
 
 // GET: Fetch all projects for the user or a specific project by ID
 export async function GET(req: Request) {

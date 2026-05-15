@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/db";
 import { auth } from "@/lib/auth";
@@ -5,6 +7,8 @@ import Notification from "@/models/Notification.model";
 import User from "@/models/user.model";
 import Invite from "@/models/Invite.model";
 import {
+
+
   applyNotificationMark,
   isNotificationMark,
 } from "@/lib/notification-utils";

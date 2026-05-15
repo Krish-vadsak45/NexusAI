@@ -1,7 +1,11 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminContext } from "@/lib/admin";
 import { getAdminUsers } from "@/lib/admin-queries";
 import {
+
+
   ForbiddenError,
   UnauthorizedError,
   withApiHandler,

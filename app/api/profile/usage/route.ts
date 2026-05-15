@@ -1,8 +1,12 @@
+export const dynamic = "force-dynamic";
+
 import { auth } from "@/lib/auth";
 import { getUsageSummary } from "@/middleware/usage";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { UnauthorizedError, withApiHandler } from "@/lib/errors";
+
+
 
 export const GET = withApiHandler(async () => {
   const session = await auth.api.getSession({

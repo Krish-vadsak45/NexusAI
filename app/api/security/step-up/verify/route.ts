@@ -1,6 +1,10 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyStepUpChallenge } from "@/lib/security/step-up";
+
+
 
 const bodySchema = z.object({
   purpose: z.enum([

@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { requireAuth } from "@/middleware/requireAuth";
@@ -6,6 +8,8 @@ import logger from "@/lib/logger";
 import { ObjectId } from "mongodb";
 import Subscription from "@/models/Subscription.model";
 import { APIError } from "better-auth/api";
+
+
 
 export async function GET(req: NextRequest) {
   try {

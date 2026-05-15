@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
+import { memoryAdapter } from "better-auth/adapters/memory";
 import connectToDatabase from "@/lib/db";
 import {
   apiKey,
@@ -20,12 +21,42 @@ import {
   upsertSessionSecurity,
 } from "@/lib/security/session-security";
 
-const connection = await connectToDatabase();
-if (!connection?.db) throw new Error("Failed to connect to database");
+const isBuildTime =
+  process.env.NEXT_PHASE === "phase-production-build" ||
+  process.env.npm_lifecycle_event === "build";
+
+const connection = isBuildTime ? null : await connectToDatabase();
+if (!isBuildTime && !connection?.db) {
+  throw new Error("Failed to connect to database");
+}
+const authDatabase = (() => {
+  if (isBuildTime) {
+    return memoryAdapter({});
+  }
+
+  const database = connection?.db;
+  if (!database) {
+    throw new Error("Failed to connect to database");
+  }
+
+  return mongodbAdapter(database);
+})();
+
+function getAuthHookPath(ctx: Record<string, unknown>) {
+  if (typeof ctx.path === "string") {
+    return ctx.path;
+  }
+
+  if (ctx.request instanceof Request) {
+    return new URL(ctx.request.url).pathname.replace(/^\/api\/auth/, "");
+  }
+
+  return "";
+}
 
 export const auth = betterAuth({
   appName: "NexusAI",
-  database: mongodbAdapter(connection.db),
+  database: authDatabase,
   user: {
     additionalFields: {
       phonenumber: { type: "string", required: true },
@@ -80,20 +111,26 @@ export const auth = betterAuth({
   },
   hooks: {
     before: async (ctx) => {
+      const path = getAuthHookPath(ctx as Record<string, unknown>);
+
       await enforceAuthAbuseProtection({
         body:
           ctx.body && typeof ctx.body === "object"
             ? (ctx.body as Record<string, unknown>)
             : undefined,
-        headers: ctx.headers,
-        path: ctx.path,
+        headers: ctx.headers ? new Headers(ctx.headers) : undefined,
+        path,
       });
 
       return { context: ctx };
     },
     after: async (ctx) => {
-      const session = ctx.context.session;
-      const path = ctx.path ?? "";
+      const authContext =
+        "context" in ctx && ctx.context && typeof ctx.context === "object"
+          ? (ctx.context as { session?: { user?: { id?: string } } })
+          : undefined;
+      const session = authContext?.session;
+      const path = getAuthHookPath(ctx as Record<string, unknown>);
 
       if (
         session?.user?.id &&

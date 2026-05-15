@@ -1,8 +1,12 @@
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { ValidationError, withApiHandler } from "@/lib/errors";
 import { contactSchema } from "@/lib/validations";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rateLimit";
+
+
 
 export const POST = withApiHandler(async (req: Request) => {
   const body = await req.json();

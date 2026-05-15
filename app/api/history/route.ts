@@ -1,24 +1,32 @@
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import History from "@/models/History.model";
 import connectToDatabase from "@/lib/db";
 import {
+
+
   historyCreateRequestSchema,
   historyListQuerySchema,
   historyListResponseSchema,
   type HistoryListResponse,
 } from "@/lib/api/contracts";
 import { UnauthorizedError, ValidationError, withApiHandler } from "@/lib/errors";
+import type { HistoryItem, UnknownRecord } from "@/lib/shared-types";
 
-function serializeHistoryItem(item: Record<string, unknown>) {
+function serializeHistoryItem(item: Record<string, unknown>): HistoryItem {
   return {
-    ...item,
     _id: String(item._id ?? ""),
+    tool: String(item.tool ?? ""),
+    title: String(item.title ?? ""),
     createdAt:
       item.createdAt instanceof Date
         ? item.createdAt.toISOString()
         : String(item.createdAt ?? ""),
+    input: (item.input as UnknownRecord | undefined) ?? {},
+    output: item.output,
   };
 }
 

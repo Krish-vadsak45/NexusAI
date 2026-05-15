@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
@@ -5,6 +7,8 @@ import connectToDatabase from "@/lib/db";
 import AIJob from "@/models/AIJob.model";
 import { aiJobResponseSchema } from "@/lib/api/contracts";
 import { UnauthorizedError, withApiHandler } from "@/lib/errors";
+
+
 
 type ArticleWriterJob = {
   _id: string;

@@ -1,5 +1,9 @@
+export const dynamic = "force-dynamic";
+
 import { auth } from "@/lib/auth";
 import {
+
+
   checkAndIncrementUsage,
   revertFeatureUsage,
   recordUsageResult,

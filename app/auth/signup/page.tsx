@@ -23,6 +23,7 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
+  Phone,
 } from "lucide-react";
 
 const SignUpPage = () => {
@@ -34,6 +35,9 @@ const SignUpPage = () => {
   const schema = z.object({
     name: z.string().min(2, { message: "Name must be at least 2 characters" }),
     email: z.string().email({ message: "Invalid email address" }),
+    phonenumber: z
+      .string()
+      .min(7, { message: "Phone number must be at least 7 digits" }),
     password: z
       .string()
       .min(8, { message: "Password must be at least 8 characters" })
@@ -70,11 +74,13 @@ const SignUpPage = () => {
         email: values.email,
         password: values.password,
         name: values.name,
+        phonenumber: values.phonenumber,
       });
 
       if (signUpError) {
-        setError(signUpError.message);
-        toast.error(signUpError.message);
+        const message = signUpError.message ?? "Failed to create account";
+        setError(message);
+        toast.error(message);
       } else {
         toast.success("Account created! Please verify your email.");
         router.push(`/verify-email?email=${encodeURIComponent(values.email)}`);
@@ -167,6 +173,22 @@ const SignUpPage = () => {
                       <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                     </div>
                   )}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-gray-300 text-xs font-semibold uppercase tracking-wider ml-1">
+                  Phone Number
+                </Label>
+                <div className="relative group text-white">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 group-focus-within:text-blue-400 text-gray-500">
+                    <Phone className="h-4.5 w-4.5" />
+                  </div>
+                  <Input
+                    {...register("phonenumber")}
+                    placeholder="+1 555 123 4567"
+                    className="bg-white/[0.03] text-white border-white/10 pl-11 py-5 rounded-2xl focus:border-blue-500/50 focus:ring-blue-500/20"
+                  />
                 </div>
               </div>
 

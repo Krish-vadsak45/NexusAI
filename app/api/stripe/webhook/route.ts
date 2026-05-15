@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
@@ -10,6 +12,8 @@ import { getErrorMessage } from "@/lib/error-utils";
 import Audit from "@/models/Audit.model";
 import { createRequestContext, logRequestCompleted } from "@/lib/observability";
 import { handleStripeWebhookEvent } from "@/lib/stripe-webhook";
+
+
 
 export async function POST(req: Request) {
   const requestContext = createRequestContext(req);

@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/db";
 import { auth } from "@/lib/auth";
@@ -9,6 +11,8 @@ import Audit from "@/models/Audit.model";
 import logger from "@/lib/logger";
 import type { ProjectAccessRecord } from "@/lib/shared-types";
 import {
+
+
   inviteCreateRequestSchema,
   inviteDeleteRequestSchema,
   invitesListResponseSchema,

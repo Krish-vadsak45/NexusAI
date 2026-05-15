@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { acceptInvite } from "@/lib/invite";
@@ -6,6 +8,8 @@ import Invite from "@/models/Invite.model";
 import { z } from "zod";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { createMailTransport } from "@/lib/mailer";
+
+
 
 const acceptInviteBodySchema = z.object({
   token: z.string().min(1),

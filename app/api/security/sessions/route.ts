@@ -1,7 +1,11 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/db";
 import { auth } from "@/lib/auth";
 import SessionSecurity from "@/models/SessionSecurity.model";
+
+
 
 type DeviceSession = {
   session: {

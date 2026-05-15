@@ -1,8 +1,12 @@
+export const dynamic = "force-dynamic";
+
 import { auth } from "@/lib/auth";
 import axios from "axios";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import logger from "@/lib/logger";
+
+
 
 export async function POST(req: Request) {
   try {

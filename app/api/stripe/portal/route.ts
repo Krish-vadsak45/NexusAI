@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { stripe } from "@/lib/stripe";
@@ -5,6 +7,8 @@ import Subscription from "@/models/Subscription.model";
 import connectToDatabase from "@/lib/db";
 import { assertRecentStepUp } from "@/lib/security/step-up";
 import { createAuditLog } from "@/lib/security/audit";
+
+
 
 export async function POST() {
   try {

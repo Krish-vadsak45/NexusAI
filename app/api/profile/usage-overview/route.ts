@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { auth } from "@/lib/auth";
 import connectToDatabase from "@/lib/db";
 import logger from "@/lib/logger";
@@ -6,6 +8,7 @@ import mongoose from "mongoose";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import type { UnknownRecord } from "@/lib/shared-types";
+
 
 type UsageAggregateRow = {
   _id: {

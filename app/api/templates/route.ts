@@ -1,4 +1,6 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
+
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import connectToDatabase from "@/lib/db";
 import Template from "@/models/Template.model";
@@ -8,6 +10,8 @@ import redis from "@/lib/redisClient";
 import { getErrorMessage } from "@/lib/error-utils";
 import logger from "@/lib/logger";
 import {
+
+
   buildTemplateCacheKey,
   buildTemplateQuery,
   isTemplateQueryCacheable,
