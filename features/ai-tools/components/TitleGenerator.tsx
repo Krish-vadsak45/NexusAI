@@ -39,24 +39,17 @@ interface TitleData {
 
 const formSchema = z.object({
   topic: z.string().min(1, "Topic is required"),
-  category: z.enum(
-    [
-      "General",
-      "Technology",
-      "Business",
-      "Health",
-      "Lifestyle",
-      "Education",
-      "Travel",
-      "Food",
-    ],
-    {
-      required_error: "Category is required",
-    },
-  ),
-  tone: z.enum(["catchy", "professional", "seo", "question", "dramatic"], {
-    required_error: "Tone is required",
-  }),
+  category: z.enum([
+    "General",
+    "Technology",
+    "Business",
+    "Health",
+    "Lifestyle",
+    "Education",
+    "Travel",
+    "Food",
+  ]),
+  tone: z.enum(["catchy", "professional", "seo", "question", "dramatic"]),
 });
 
 type FormValues = z.infer<typeof formSchema>;

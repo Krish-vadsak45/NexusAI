@@ -10,12 +10,8 @@ export const contactSchema = z.object({
 export const feedbackSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
-  rating: z.enum(["1", "2", "3", "4", "5"], {
-    required_error: "Please select a rating",
-  }),
-  category: z.enum(["ui", "performance", "features", "other"], {
-    required_error: "Please select a category",
-  }),
+  rating: z.enum(["1", "2", "3", "4", "5"]),
+  category: z.enum(["ui", "performance", "features", "other"]),
   tool: z
     .enum([
       "article-writer",
